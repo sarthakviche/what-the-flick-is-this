@@ -83,7 +83,11 @@ A separate Electron app that reimplements the Clicky loop for Windows with free 
 - `src/core/` has no Electron imports and is unit tested: `schema.js` (JSON steps contract and normalization), `coords.js` (0-1000 normalized coords to display DIP shapes), `prompt.js` (system prompt adapted from `CompanionManager.swift`), `session.js` (capture, ask, then play steps: mark, board lines, speech).
 - `src/providers/` has `llm/` (Gemini, Ollama), `stt/` (Gemini audio, faster-whisper sidecar) and `tts/` (Windows SAPI, Piper, silent). Selected by env in `providers/index.js`.
 - `src/main/` is the Electron shell (overlay per display, whiteboard window, panel, tray, recorder, uiohook push to talk). `src/renderer/` holds the pages.
-- Run tests with `cd windows-local && npm test`. No API keys are committed; copy `.env.example` to `.env`.
+- `src/main/settingsStore.js` reads and writes `.env` for the panel's keys page; `src/main/keyCheck.js` tests Gemini and Groq keys (shared with `npm run doctor`). Providers are rebuilt live on save.
+- STT options: Gemini, Groq Whisper (`stt/groq.js`), faster-whisper. Gemini model defaults to the `gemini-flash-latest` alias.
+- UI uses a hand-drawn notebook style: bundled Caveat and Patrick Hand fonts (`@fontsource`), tokens in `src/renderer/shared/doodle.css`. Keep new UI in that style.
+- One click launch: `start-what-the-flick.cmd` in the repo root installs on first run and calls `windows-local/scripts/create-desktop-shortcut.ps1`. Icon lives in `windows-local/assets/icon.png` / `icon.ico`.
+- Run tests with `cd windows-local && npm test`. No API keys are committed; the app creates `.env` from `.env.example` on first run.
 
 ## Build & Run
 

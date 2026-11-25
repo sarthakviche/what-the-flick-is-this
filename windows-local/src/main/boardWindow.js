@@ -24,7 +24,7 @@ class BoardWindow {
       alwaysOnTop: true,
       skipTaskbar: true,
       show: false,
-      backgroundColor: '#12151c',
+      backgroundColor: '#1f3b2d',
       webPreferences: { preload: path.join(__dirname, 'preload.js'), contextIsolation: true, sandbox: true, nodeIntegration: false },
     });
     this.isRendererReady = false;

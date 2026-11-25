@@ -17,7 +17,11 @@ Design decisions and tradeoffs are in [`../docs/PLAN.md`](../docs/PLAN.md).
 
 Everything else (voice output) uses Windows' built in voices by default.
 
-## Run it: exact steps
+## Quickest way
+
+Double click `start-what-the-flick.cmd` in the repo root. It installs on first run, creates a Desktop and Start menu shortcut, and opens the app on the **keys** page, where you paste your free key (no file editing needed).
+
+## Run it by hand: exact steps
 
 1. **Install Node.js LTS** from https://nodejs.org (accept the defaults). Open a new **PowerShell** window and check:
    ```powershell

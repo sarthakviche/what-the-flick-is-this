@@ -3,9 +3,14 @@ const { GeminiLlmProvider } = require('./llm/gemini');
 const { OllamaLlmProvider } = require('./llm/ollama');
 const { GeminiSttProvider } = require('./stt/gemini');
 const { FasterWhisperSttProvider } = require('./stt/fasterWhisper');
+const { GroqSttProvider } = require('./stt/groq');
 const { SapiTtsProvider } = require('./tts/sapi');
 const { PiperTtsProvider } = require('./tts/piper');
 const { SilentTtsProvider } = require('./tts/none');
+
+// Google's "latest" aliases always point at a current Flash model, so the default never goes stale.
+const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
+const DEFAULT_GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest';
 
 /** Provider factories. To add a provider: write one file implementing the interface and add one line here. */
 function createLlmProvider(env) {
@@ -13,8 +18,8 @@ function createLlmProvider(env) {
   if (providerName === 'gemini') {
     return new GeminiLlmProvider({
       apiKey: env.GEMINI_API_KEY,
-      model: env.GEMINI_MODEL || 'gemini-3.8-flash',
-      fallbackModels: (env.GEMINI_FALLBACK_MODELS || '').split(',').map((name) => name.trim()).filter(Boolean),
+      model: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
+      fallbackModels: (env.GEMINI_FALLBACK_MODELS ?? DEFAULT_GEMINI_FALLBACK_MODELS).split(',').map((name) => name.trim()).filter(Boolean),
     });
   }
   if (providerName === 'ollama') {
@@ -31,8 +36,9 @@ function createSttProvider(env) {
   const providerName = (env.STT_PROVIDER || 'gemini').toLowerCase();
   if (providerName === 'none') return null;
   if (providerName === 'gemini') {
-    return new GeminiSttProvider({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_STT_MODEL || env.GEMINI_MODEL || 'gemini-3.8-flash' });
+    return new GeminiSttProvider({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_STT_MODEL || env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL });
   }
+  if (providerName === 'groq') return new GroqSttProvider({ apiKey: env.GROQ_API_KEY });
   if (providerName === 'faster-whisper') {
     return new FasterWhisperSttProvider({
       sidecarUrl: env.WHISPER_SIDECAR_URL || 'http://127.0.0.1:8765',
@@ -40,7 +46,7 @@ function createSttProvider(env) {
       modelName: env.WHISPER_MODEL || 'small.en',
     });
   }
-  throw new Error(`Unknown STT_PROVIDER "${providerName}". Use gemini, faster-whisper or none.`);
+  throw new Error(`Unknown STT_PROVIDER "${providerName}". Use gemini, groq, faster-whisper or none.`);
 }
 
 function createTtsProvider(env, log) {
@@ -51,4 +57,4 @@ function createTtsProvider(env, log) {
   throw new Error(`Unknown TTS_PROVIDER "${providerName}". Use sapi, piper or none.`);
 }
 
-module.exports = { createLlmProvider, createSttProvider, createTtsProvider };
+module.exports = { DEFAULT_GEMINI_MODEL, createLlmProvider, createSttProvider, createTtsProvider };

@@ -2,36 +2,239 @@
 <html>
 <head>
 <meta charset="utf-8">
-<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'self' 'unsafe-inline'; font-src 'self'; img-src 'self'; script-src 'self'">
+<link rel="stylesheet" href="../shared/doodle.css">
 <style>
-  body { margin: 0; background: #12151c; color: #e8ecf4; font: 14px 'Segoe UI', sans-serif; padding: 16px; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; gap: 12px; }
-  h1 { font-size: 17px; margin: 0; }
-  h1 span { color: #3b82f6; }
-  #status { background: #1a1f2b; border-radius: 10px; padding: 12px; min-height: 64px; line-height: 1.45; }
-  #state { font-weight: 700; color: #7db1ff; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
-  #state.error { color: #ff8b8b; }
-  textarea { background: #1a1f2b; color: inherit; border: 1px solid #2a3142; border-radius: 10px; padding: 10px; font: inherit; resize: none; height: 78px; }
-  textarea:focus { outline: 2px solid #3b82f6; }
-  .row { display: flex; gap: 8px; flex-wrap: wrap; }
-  button { background: #2a3142; color: inherit; border: 0; border-radius: 8px; padding: 9px 13px; font: inherit; cursor: pointer; }
-  button:hover { background: #3b82f6; }
-  button.primary { background: #3b82f6; }
-  button.primary:hover { background: #5b9bff; }
-  small { color: #8a93a6; }
+  * { box-sizing: border-box; }
+  html, body { margin: 0; height: 100%; }
+  body {
+    background-color: var(--paper);
+    /* Ruled notebook paper with a red margin line. */
+    background-image:
+      linear-gradient(90deg, transparent 38px, var(--margin-line) 38px, var(--margin-line) 40px, transparent 40px),
+      repeating-linear-gradient(transparent 0 31px, var(--paper-line) 31px 32px);
+    color: var(--ink); font: 19px/1.35 var(--font-body);
+    padding: 14px 18px 14px 52px; display: flex; flex-direction: column; gap: 12px; overflow-y: auto;
+  }
+  header { display: flex; align-items: center; gap: 14px; }
+  header img { width: 64px; height: 64px; object-fit: cover; border: 4px solid #fff; border-radius: 10px; box-shadow: 2px 3px 0 rgba(31,42,68,.25); transform: rotate(-6deg); }
+  h1 { font: 700 33px/1 var(--font-title); margin: 0; }
+  h1 .flick { color: var(--pink); position: relative; }
+  h1 .flick::after { content: ''; position: absolute; left: -2px; right: -2px; bottom: 2px; height: 9px; background: var(--highlighter); z-index: -1; transform: rotate(-2deg); }
+  header p { margin: 4px 0 0; color: var(--ink-soft); font-size: 16px; }
+
+  nav { display: flex; gap: 18px; font: 700 24px var(--font-title); }
+  nav button { background: none; border: 0; padding: 0 2px; font: inherit; color: var(--ink-soft); cursor: pointer; }
+  nav button:hover { color: var(--ink); }
+  nav button.active { color: var(--pen-blue); text-decoration: underline wavy var(--pink) 2px; text-underline-offset: 6px; }
+
+  .page { display: none; flex-direction: column; gap: 12px; }
+  .page.active { display: flex; }
+
+  .sticky { background: var(--sticky); padding: 12px 14px; box-shadow: 3px 4px 0 rgba(31,42,68,.18); transform: rotate(-1deg); border-radius: 2px 2px 14px 2px; }
+  #state { font: 700 22px var(--font-title); text-transform: lowercase; }
+  #state.error { color: var(--danger); }
+  #state.listening, #state.setup { color: var(--pink); }
+  #state.thinking, #state.speaking { color: var(--pen-blue); }
+
+  .card { background: #fff; border: 2px solid var(--ink); border-radius: 18px 6px 22px 8px; padding: 12px 14px; box-shadow: 3px 3px 0 var(--ink); }
+  .card h2 { font: 700 25px var(--font-title); margin: 0 0 4px; }
+  .card h2 .tag { font: 15px var(--font-body); background: var(--mint); color: #fff; padding: 1px 8px; border-radius: 10px; vertical-align: middle; margin-left: 6px; }
+  .card h2 .tag.optional { background: var(--ink-soft); }
+  .card p { margin: 4px 0; }
+
+  textarea, input, select {
+    width: 100%; background: #fff; color: var(--ink); font: 18px var(--font-body);
+    border: 2px solid var(--ink); border-radius: var(--wobbly-radius); padding: 8px 12px;
+  }
+  textarea { resize: none; height: 84px; }
+  textarea:focus, input:focus, select:focus { outline: 3px solid var(--highlighter); }
+  label { display: block; font-size: 17px; color: var(--ink-soft); margin-top: 8px; }
+
+  .row { display: flex; gap: 8px; flex-wrap: wrap; align-items: center; }
+  button.doodle {
+    background: #fff; color: var(--ink); border: 2px solid var(--ink); border-radius: var(--wobbly-radius);
+    padding: 6px 14px; font: 18px var(--font-body); cursor: pointer; box-shadow: 2px 2px 0 var(--ink);
+    transition: transform .12s, box-shadow .12s, background .12s;
+  }
+  button.doodle:hover { transform: translate(-1px, -1px) rotate(-1.5deg); box-shadow: 3px 4px 0 var(--ink); background: var(--highlighter); }
+  button.doodle:active { transform: translate(1px, 1px); box-shadow: 0 0 0 var(--ink); }
+  button.doodle.primary { background: var(--pen-blue); color: #fff; }
+  button.doodle.primary:hover { background: #4b80ff; }
+  button.doodle.small { font-size: 16px; padding: 3px 10px; }
+
+  .chips { display: flex; flex-wrap: wrap; gap: 8px; }
+  .chips button { background: var(--paper); border: 2px dashed var(--ink-soft); border-radius: 18px; padding: 3px 12px; font: 17px var(--font-body); color: var(--ink); cursor: pointer; }
+  .chips button:hover { border-style: solid; border-color: var(--pink); background: #fff; transform: rotate(-2deg); }
+
+  .key-input { display: flex; gap: 6px; }
+  .key-input input { flex: 1; }
+  .result { font-size: 17px; min-height: 1em; margin-top: 6px; }
+  .result.ok { color: #13915c; }
+  .result.bad { color: var(--danger); }
+
+  details { margin-top: 8px; }
+  summary { cursor: pointer; color: var(--pen-blue); font-size: 18px; }
+  summary:hover { text-decoration: underline wavy var(--pink); }
+  ol { margin: 6px 0 4px; padding-left: 24px; }
+  ol li { margin: 4px 0; }
+  a.link { color: var(--pen-blue); cursor: pointer; text-decoration: underline; }
+  a.link:hover { background: var(--highlighter); }
+  kbd { font: 16px var(--font-body); background: #fff; border: 2px solid var(--ink); border-bottom-width: 4px; border-radius: 6px; padding: 0 6px; }
+  .hint { color: var(--ink-soft); font-size: 16px; }
+  .save-bar { position: sticky; bottom: -14px; padding: 10px 0 14px; background: var(--paper); border-top: 2px dashed var(--ink-soft); display: flex; align-items: center; gap: 12px; }
 </style>
 </head>
 <body>
-<h1>what the <span>flick</span> is this</h1>
-<div id="status"><div id="state">idle</div><div id="detail">starting...</div></div>
-<textarea id="question" placeholder="Type a question about your screen, then Ctrl+Enter"></textarea>
-<div class="row">
-  <button class="primary" id="ask">Ask</button>
-  <button id="mic">Mic on/off</button>
-  <button id="stop">Stop</button>
-  <button id="clearMarks">Clear marks</button>
-  <button id="board">Whiteboard</button>
-</div>
-<small>Close this window to keep running in the tray.</small>
+<header>
+  <img src="../../../assets/icon.png" alt="">
+  <div>
+    <h1>what the <span class="flick">flick</span> is this?</h1>
+    <p>point it at your slides. it explains. out loud.</p>
+  </div>
+</header>
+
+<nav>
+  <button data-page="ask" class="active">ask</button>
+  <button data-page="keys">keys</button>
+  <button data-page="tips">how to use</button>
+</nav>
+
+<!-- ASK -->
+<section class="page active" id="page-ask">
+  <div class="sticky"><div id="state">idle</div><div id="detail">waking up...</div></div>
+  <textarea id="question" placeholder="what's confusing you on this slide? (enter to send)"></textarea>
+  <div class="row">
+    <button class="doodle primary" id="ask">ask!</button>
+    <button class="doodle" id="mic">mic on/off</button>
+    <button class="doodle" id="stop">shh, stop</button>
+  </div>
+  <div class="hint">quick ones:</div>
+  <div class="chips">
+    <button data-question="explain this slide to me step by step, like a good teacher would">explain this slide</button>
+    <button data-question="explain what is on my screen like i am five, with a simple everyday analogy">explain like i'm 5</button>
+    <button data-question="what are the key terms on this slide and what does each one mean? mark them on screen">key terms</button>
+    <button data-question="write short revision notes for this slide on the whiteboard">notes on the whiteboard</button>
+    <button data-question="quiz me with three short questions about this slide, one at a time, and wait for my answers">quiz me</button>
+    <button data-question="how could this topic come up in an exam, and what should i remember?">exam angle</button>
+  </div>
+  <div class="row">
+    <button class="doodle small" id="clearMarks">wipe doodles</button>
+    <button class="doodle small" id="board">whiteboard</button>
+  </div>
+</section>
+
+<!-- KEYS -->
+<section class="page" id="page-keys">
+  <p class="hint">everything here is free. keys are saved only on this laptop (in <b>windows-local/.env</b>).</p>
+
+  <div class="card">
+    <h2>gemini key <span class="tag">needed</span></h2>
+    <p class="hint">the brain: reads your screen and explains it. google's free tier, no credit card.</p>
+    <div class="key-input">
+      <input id="GEMINI_API_KEY" type="password" placeholder="paste it here (starts with AIza...)" autocomplete="off" spellcheck="false">
+      <button class="doodle small" data-reveal="GEMINI_API_KEY">show</button>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="doodle small" id="testGemini">test it</button></div>
+    <div class="result" id="geminiResult"></div>
+    <details id="geminiHowTo">
+      <summary>how do i get one? (takes 1 minute)</summary>
+      <ol>
+        <li>open <a class="link" data-link="https://aistudio.google.com/apikey">aistudio.google.com/apikey</a></li>
+        <li>sign in with any google account</li>
+        <li>accept the terms if it asks, then click <b>create api key</b></li>
+        <li>copy the key, paste it above, hit <b>test it</b>, then <b>save</b></li>
+      </ol>
+      <p class="hint">heads up: on the free tier google may use what you send to improve its products, so close anything private before asking.</p>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>groq key <span class="tag optional">optional</span></h2>
+    <p class="hint">faster ears: turns your voice into text with whisper, and saves your gemini quota for answers.</p>
+    <div class="key-input">
+      <input id="GROQ_API_KEY" type="password" placeholder="paste it here (starts with gsk_...)" autocomplete="off" spellcheck="false">
+      <button class="doodle small" data-reveal="GROQ_API_KEY">show</button>
+    </div>
+    <div class="row" style="margin-top:8px"><button class="doodle small" id="testGroq">test it</button></div>
+    <div class="result" id="groqResult"></div>
+    <details>
+      <summary>how do i get one?</summary>
+      <ol>
+        <li>open <a class="link" data-link="https://console.groq.com/keys">console.groq.com/keys</a> and sign up (google login works)</li>
+        <li>click <b>create api key</b>, give it any name</li>
+        <li>copy it right away (groq only shows it once) and paste it above</li>
+        <li>set <b>ears</b> below to <b>groq</b>, then <b>save</b></li>
+      </ol>
+    </details>
+  </div>
+
+  <div class="card">
+    <h2>knobs</h2>
+    <label for="LLM_PROVIDER">brain</label>
+    <select id="LLM_PROVIDER">
+      <option value="gemini">gemini (free, recommended)</option>
+      <option value="ollama">ollama on this laptop (offline, slower)</option>
+    </select>
+    <label for="STT_PROVIDER">ears (voice to text)</label>
+    <select id="STT_PROVIDER">
+      <option value="gemini">gemini (uses the same key)</option>
+      <option value="groq">groq whisper (faster, needs groq key)</option>
+      <option value="none">off, i'll type</option>
+    </select>
+    <label for="TTS_PROVIDER">voice</label>
+    <select id="TTS_PROVIDER">
+      <option value="sapi">windows voice (built in)</option>
+      <option value="none">silent, just text and doodles</option>
+      <option value="piper">piper (set up in .env first)</option>
+    </select>
+    <label for="PUSH_TO_TALK_KEYS">hold to talk</label>
+    <select id="PUSH_TO_TALK_KEYS">
+      <option value="ctrl+alt">ctrl + alt</option>
+      <option value="ctrl+shift">ctrl + shift</option>
+      <option value="alt+shift">alt + shift</option>
+    </select>
+    <details>
+      <summary>nerd stuff</summary>
+      <label for="GEMINI_MODEL">gemini model id (blank = gemini-flash-latest)</label>
+      <input id="GEMINI_MODEL" placeholder="gemini-flash-latest" spellcheck="false">
+      <label for="OLLAMA_MODEL">ollama model (needs <a class="link" data-link="https://ollama.com/">ollama</a> + a vision model)</label>
+      <input id="OLLAMA_MODEL" placeholder="qwen3-vl:8b" spellcheck="false">
+    </details>
+  </div>
+
+  <div class="save-bar">
+    <button class="doodle primary" id="save">save</button>
+    <span class="result" id="saveResult"></span>
+  </div>
+</section>
+
+<!-- TIPS -->
+<section class="page" id="page-tips">
+  <div class="card">
+    <h2>the 10 second version</h2>
+    <ol>
+      <li>open your ppt, pdf or lecture notes</li>
+      <li>hold <kbd>ctrl</kbd> + <kbd>alt</kbd> and ask, like <i>"what does this diagram mean?"</i></li>
+      <li>let go. it looks at your screen, talks you through it and circles the bits it means</li>
+    </ol>
+  </div>
+  <div class="card">
+    <h2>try saying</h2>
+    <p>"explain this slide step by step"</p>
+    <p>"what's the difference between these two terms?"</p>
+    <p>"derive this formula on the whiteboard"</p>
+    <p>"give me a real life example of this"</p>
+  </div>
+  <div class="card">
+    <h2>shortcuts</h2>
+    <p><kbd>ctrl</kbd> + <kbd>alt</kbd> hold to talk</p>
+    <p><kbd>ctrl</kbd> + <kbd>alt</kbd> + <kbd>space</kbd> mic on/off</p>
+    <p><kbd>alt</kbd> + <kbd>shift</kbd> + <kbd>x</kbd> wipe the doodles</p>
+    <p class="hint">closing this window keeps it running in the tray (bottom right, near the clock).</p>
+  </div>
+</section>
+
 <script src="panel.js"></script>
 </body>
 </html>

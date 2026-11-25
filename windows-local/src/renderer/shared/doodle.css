@@ -1,0 +1,28 @@
+/* Shared hand-drawn look: bundled handwritten fonts (work offline) and the notebook colour tokens. */
+@font-face {
+  font-family: 'Caveat';
+  font-weight: 400 700;
+  src: url('../../../node_modules/@fontsource/caveat/files/caveat-latin-700-normal.woff2') format('woff2');
+}
+@font-face {
+  font-family: 'Patrick Hand';
+  font-weight: 400;
+  src: url('../../../node_modules/@fontsource/patrick-hand/files/patrick-hand-latin-400-normal.woff2') format('woff2');
+}
+
+:root {
+  --paper: #fdf8ec;
+  --paper-line: #dfe8f5;
+  --margin-line: #f3a6a6;
+  --ink: #1f2a44;
+  --ink-soft: #5b6680;
+  --pen-blue: #2f6bff;
+  --highlighter: #fff176;
+  --sticky: #ffe98a;
+  --pink: #ff5fa2;
+  --mint: #3ecf8e;
+  --danger: #e5484d;
+  --wobbly-radius: 255px 15px 225px 15px / 15px 225px 15px 255px;
+  --font-title: 'Caveat', 'Segoe Print', cursive;
+  --font-body: 'Patrick Hand', 'Segoe Print', 'Comic Sans MS', cursive;
+}

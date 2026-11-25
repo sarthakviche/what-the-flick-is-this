@@ -1,6 +1,6 @@
 # what the flick is this
 
-**A free, local, screen-aware AI study buddy for Windows.** Hold a key, ask out loud about whatever is on your screen, and it answers by voice, draws circles, boxes, arrows and underlines directly on your screen, and writes step-by-step derivations and code walkthroughs on a whiteboard while it talks.
+**A free, screen-aware AI study buddy for Windows, made for people learning from PPTs, PDFs and lecture notes.** Hold a key, ask out loud about whatever is on your screen, and it answers by voice, draws circles, boxes, arrows and underlines directly on your screen, and writes step-by-step derivations and code walkthroughs on a whiteboard while it talks.
 
 Built for exam preparation by a B.Tech IT student. It costs nothing to run: no Claude, no AssemblyAI, no ElevenLabs, no cloud proxy.
 
@@ -40,7 +40,7 @@ The model returns **structured JSON, not inline text tags**. Boxes use Gemini's 
 | Job | Default (free) | Alternatives |
 |---|---|---|
 | Vision + reasoning | Gemini free tier | Ollama with Qwen3-VL (fully local, experimental) |
-| Speech to text | Gemini audio (zero install) | faster-whisper (local, Python helper) |
+| Speech to text | Gemini audio (zero install) | Groq Whisper (free key, faster), faster-whisper (local) |
 | Text to speech | Windows built in voices (SAPI) | Piper (local neural voice), silent mode |
 
 Adding a provider is one file plus one line in `windows-local/src/providers/index.js`.
@@ -53,19 +53,14 @@ Adding a provider is one file plus one line in `windows-local/src/providers/inde
 - **Ordered board queue** so lines from a short step can never overtake the previous step's lines (a real bug found in testing, now covered by a test).
 - **Wait for the full JSON before playback.** Simple and robust. Streaming partial JSON would cut about a second or two of latency and is a follow-up.
 
-## Run it on Windows
+## Run it on Windows (one click)
 
-Exact steps are in [`windows-local/README.md`](windows-local/README.md). Short version, in PowerShell:
+1. Install [Node.js LTS](https://nodejs.org) once.
+2. Double click **`start-what-the-flick.cmd`** in this folder. The first run installs everything (a minute or two) and puts a **what the flick is this** shortcut with the app icon on your Desktop and in the Start menu. After that, use the shortcut.
+3. The app opens on the **keys** page with a 1 minute tutorial. Paste a free Gemini key from https://aistudio.google.com/apikey, hit **test it**, then **save**. (Optional: a free Groq key from https://console.groq.com/keys for faster voice input.)
+4. Open your slides, hold `Ctrl+Alt`, ask "explain this slide", let go.
 
-```powershell
-cd windows-local
-copy .env.example .env      # then put your free Gemini key in .env
-npm install
-npm run doctor              # checks config and the key
-npm start
-```
-
-Get a free key at https://aistudio.google.com/apikey. Requires Node.js 20+ and Windows 10 (2004+) or 11.
+Manual route and all options: [`windows-local/README.md`](windows-local/README.md).
 
 ## Testing and honest limits
 
