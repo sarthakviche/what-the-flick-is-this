@@ -9,7 +9,7 @@
  */
 
 const MARK_TYPES = ['point', 'circle', 'box', 'arrow', 'underline'];
-const BOARD_KINDS = ['heading', 'text', 'math', 'code', 'diagram'];
+const BOARD_KINDS = ['heading', 'text', 'term', 'math', 'code', 'diagram'];
 const RESPONSE_MODES = ['answer', 'annotate', 'whiteboard'];
 
 /** JSON schema (lowercase types). Gemini needs uppercase, see toGeminiSchema. */
@@ -124,10 +124,19 @@ function normalizeMark(rawMark, options = {}) {
   }
 }
 
+// When a model writes LaTeX such as \frac in JSON with only one backslash, JSON.parse turns the
+// backslash-f into a form feed (and backslash b, t, n, r into backspace, tab, newline, return).
+// Those control characters never belong in maths, so we turn them back into LaTeX commands.
+const LATEX_COMMAND_LETTER_BY_CONTROL_CHARACTER = { '\f': 'f', '\b': 'b', '\t': 't', '\n': 'n', '\r': 'r' };
+function repairLatexEscapes(latexSource) {
+  return latexSource.replace(/[\f\b\t\n\r]/g, (controlCharacter) => `\\${LATEX_COMMAND_LETTER_BY_CONTROL_CHARACTER[controlCharacter]}`);
+}
+
 function normalizeBoardLine(rawLine) {
   if (!rawLine || typeof rawLine !== 'object' || !BOARD_KINDS.includes(rawLine.kind)) return null;
   if (typeof rawLine.content !== 'string' || rawLine.content.trim() === '') return null;
-  return { kind: rawLine.kind, content: rawLine.content, lang: typeof rawLine.lang === 'string' ? rawLine.lang : '' };
+  const content = rawLine.kind === 'math' ? repairLatexEscapes(rawLine.content) : rawLine.content;
+  return { kind: rawLine.kind, content, lang: typeof rawLine.lang === 'string' ? rawLine.lang : '' };
 }
 
 /**

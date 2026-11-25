@@ -2,8 +2,8 @@
 const questionBox = document.getElementById('question');
 const stateElement = document.getElementById('state');
 const detailElement = document.getElementById('detail');
-const SETTING_FIELD_IDS = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'LLM_PROVIDER', 'STT_PROVIDER', 'TTS_PROVIDER', 'PUSH_TO_TALK_KEYS', 'GEMINI_MODEL', 'OLLAMA_MODEL'];
-const DEFAULT_SELECT_VALUES = { LLM_PROVIDER: 'gemini', STT_PROVIDER: 'gemini', TTS_PROVIDER: 'sapi', PUSH_TO_TALK_KEYS: 'ctrl+alt' };
+const SETTING_FIELD_IDS = ['GEMINI_API_KEY', 'GROQ_API_KEY', 'LLM_PROVIDER', 'STT_PROVIDER', 'TTS_PROVIDER', 'KOKORO_VOICE', 'PUSH_TO_TALK_KEYS', 'GEMINI_MODEL', 'OLLAMA_MODEL'];
+const DEFAULT_SELECT_VALUES = { LLM_PROVIDER: 'gemini', STT_PROVIDER: 'auto', TTS_PROVIDER: 'kokoro', KOKORO_VOICE: 'af_heart', PUSH_TO_TALK_KEYS: 'ctrl+alt' };
 
 /* ---------- pages ---------- */
 function showPage(pageName) {
@@ -41,6 +41,12 @@ window.flick.on('panel:status', ({ stateName, detail }) => {
   stateElement.textContent = friendlyStateNames[stateName] || stateName;
   stateElement.className = stateName;
   detailElement.textContent = detail || '';
+});
+
+// Free tier quotas are per model per day and Google resets them at midnight Pacific time.
+window.flick.on('panel:usage', ({ totalRequestsToday, requestCountByModel }) => {
+  const perModelText = Object.entries(requestCountByModel).map(([modelName, count]) => `${modelName.replace('gemini-', '')} ${count}`).join(', ');
+  document.getElementById('usage').textContent = `gemini calls today: ${totalRequestsToday}${perModelText ? ` (${perModelText})` : ''}`;
 });
 
 /* ---------- keys ---------- */

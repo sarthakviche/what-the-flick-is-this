@@ -84,7 +84,10 @@ A separate Electron app that reimplements the Clicky loop for Windows with free 
 - `src/providers/` has `llm/` (Gemini, Ollama), `stt/` (Gemini audio, faster-whisper sidecar) and `tts/` (Windows SAPI, Piper, silent). Selected by env in `providers/index.js`.
 - `src/main/` is the Electron shell (overlay per display, whiteboard window, panel, tray, recorder, uiohook push to talk). `src/renderer/` holds the pages.
 - `src/main/settingsStore.js` reads and writes `.env` for the panel's keys page; `src/main/keyCheck.js` tests Gemini and Groq keys (shared with `npm run doctor`). Providers are rebuilt live on save.
-- STT options: Gemini, Groq Whisper (`stt/groq.js`), faster-whisper. Gemini model defaults to the `gemini-flash-latest` alias.
+- Answers default to card mode (`ANNOTATION_MODE=card`): a step's `mark` becomes a padded, zoomed crop of the screenshot pinned on the whiteboard (`coords.markToCropRectangle`, `cropScreenshot` in main) instead of drawing over the real screen. Board kinds include `term` ("word: meaning"). `overlay` mode still exists.
+- Gemini calls go through `src/providers/geminiRequest.js`: Flash-Lite (`gemini-flash-lite-latest`) by default because its free daily quota is far bigger, Flash as fallback, at most 3 failed tries per question, 404 models skipped. `src/main/usageCounter.js` counts requests per Pacific day for the panel.
+- STT options: `auto` (default: Groq if `GROQ_API_KEY` is set, else Gemini), Gemini, Groq Whisper (`stt/groq.js`), faster-whisper.
+- TTS default is Kokoro (`tts/kokoro.js` + `tts/kokoroWorker.mjs`, forked child process, model downloads ~90 MB on first run), played through a hidden renderer (`src/main/audioPlayer.js`, `src/renderer/player/`). Falls back to Windows SAPI until the model is ready or if it fails.
 - UI uses a hand-drawn notebook style: bundled Caveat and Patrick Hand fonts (`@fontsource`), tokens in `src/renderer/shared/doodle.css`. Keep new UI in that style.
 - One click launch: `start-what-the-flick.cmd` in the repo root installs on first run and calls `windows-local/scripts/create-desktop-shortcut.ps1`. Icon lives in `windows-local/assets/icon.png` / `icon.ico`.
 - Run tests with `cd windows-local && npm test`. No API keys are committed; the app creates `.env` from `.env.example` on first run.

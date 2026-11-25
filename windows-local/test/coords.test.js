@@ -42,3 +42,14 @@ test('screen number picks display, out of range falls back to first', () => {
   assert.equal(pickDisplayForScreenNumber(9, displays).id, 1);
   assert.equal(pickDisplayForScreenNumber(1, []), null);
 });
+
+test('snapshot crops are padded, never tiny, and stay inside the screenshot', () => {
+  const { markToCropRectangle } = require('../src/core/coords');
+  const tightCrop = markToCropRectangle({ type: 'box', box_2d: [500, 500, 510, 510] }, 1600, 900);
+  assert.ok(tightCrop.width >= 1600 * 0.35 - 1 && tightCrop.height >= 900 * 0.22 - 1);
+  const edgeCrop = markToCropRectangle({ type: 'box', box_2d: [950, 950, 1000, 1000] }, 1600, 900);
+  assert.ok(edgeCrop.x + edgeCrop.width <= 1600 && edgeCrop.y + edgeCrop.height <= 900 && edgeCrop.x >= 0 && edgeCrop.y >= 0);
+  const pointCrop = markToCropRectangle({ type: 'point', point: [100, 100] }, 1600, 900);
+  assert.equal(pointCrop.x, 0);
+  assert.equal(markToCropRectangle({ type: 'box' }, 1600, 900), null);
+});

@@ -119,9 +119,10 @@
     <button data-question="how could this topic come up in an exam, and what should i remember?">exam angle</button>
   </div>
   <div class="row">
-    <button class="doodle small" id="clearMarks">wipe doodles</button>
-    <button class="doodle small" id="board">whiteboard</button>
+    <button class="doodle small" id="clearMarks">wipe the board</button>
+    <button class="doodle small" id="board">show/hide whiteboard</button>
   </div>
+  <div class="hint" id="usage">gemini calls today: 0</div>
 </section>
 
 <!-- KEYS -->
@@ -178,16 +179,29 @@
     </select>
     <label for="STT_PROVIDER">ears (voice to text)</label>
     <select id="STT_PROVIDER">
-      <option value="gemini">gemini (uses the same key)</option>
+      <option value="auto">auto: groq if you added a key, else gemini</option>
+      <option value="gemini">gemini (uses your gemini quota)</option>
       <option value="groq">groq whisper (faster, needs groq key)</option>
       <option value="none">off, i'll type</option>
     </select>
     <label for="TTS_PROVIDER">voice</label>
     <select id="TTS_PROVIDER">
-      <option value="sapi">windows voice (built in)</option>
+      <option value="kokoro">kokoro (natural, free, runs on this laptop)</option>
+      <option value="sapi">windows voice (robotic, built in)</option>
       <option value="none">silent, just text and doodles</option>
       <option value="piper">piper (set up in .env first)</option>
     </select>
+    <label for="KOKORO_VOICE">kokoro voice</label>
+    <select id="KOKORO_VOICE">
+      <option value="af_heart">heart (warm, us)</option>
+      <option value="af_bella">bella (bright, us)</option>
+      <option value="af_nicole">nicole (soft, us)</option>
+      <option value="am_michael">michael (calm, us)</option>
+      <option value="am_fenrir">fenrir (deep, us)</option>
+      <option value="bf_emma">emma (british)</option>
+      <option value="bm_george">george (british)</option>
+    </select>
+    <p class="hint">first time it downloads the voice (about 90 MB). until then you'll hear the windows voice.</p>
     <label for="PUSH_TO_TALK_KEYS">hold to talk</label>
     <select id="PUSH_TO_TALK_KEYS">
       <option value="ctrl+alt">ctrl + alt</option>
@@ -196,8 +210,8 @@
     </select>
     <details>
       <summary>nerd stuff</summary>
-      <label for="GEMINI_MODEL">gemini model id (blank = gemini-flash-latest)</label>
-      <input id="GEMINI_MODEL" placeholder="gemini-flash-latest" spellcheck="false">
+      <label for="GEMINI_MODEL">gemini model id (blank = gemini-flash-lite-latest, the free model with the biggest daily quota)</label>
+      <input id="GEMINI_MODEL" placeholder="gemini-flash-lite-latest" spellcheck="false">
       <label for="OLLAMA_MODEL">ollama model (needs <a class="link" data-link="https://ollama.com/">ollama</a> + a vision model)</label>
       <input id="OLLAMA_MODEL" placeholder="qwen3-vl:8b" spellcheck="false">
     </details>
@@ -216,7 +230,7 @@
     <ol>
       <li>open your ppt, pdf or lecture notes</li>
       <li>hold <kbd>ctrl</kbd> + <kbd>alt</kbd> and ask, like <i>"what does this diagram mean?"</i></li>
-      <li>let go. it looks at your screen, talks you through it and circles the bits it means</li>
+      <li>let go. it looks at your screen, talks you through it and builds a little explainer card on the whiteboard: a zoomed snapshot, key terms and a diagram</li>
     </ol>
   </div>
   <div class="card">
@@ -230,7 +244,7 @@
     <h2>shortcuts</h2>
     <p><kbd>ctrl</kbd> + <kbd>alt</kbd> hold to talk</p>
     <p><kbd>ctrl</kbd> + <kbd>alt</kbd> + <kbd>space</kbd> mic on/off</p>
-    <p><kbd>alt</kbd> + <kbd>shift</kbd> + <kbd>x</kbd> wipe the doodles</p>
+    <p><kbd>alt</kbd> + <kbd>shift</kbd> + <kbd>x</kbd> clear marks</p>
     <p class="hint">closing this window keeps it running in the tray (bottom right, near the clock).</p>
   </div>
 </section>

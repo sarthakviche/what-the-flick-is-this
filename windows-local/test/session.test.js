@@ -17,6 +17,7 @@ function buildHarness(plan, overrides = {}) {
     board: { clear: () => events.push(['boardClear']), show: () => events.push(['boardShow']), append: (line) => events.push(['boardLine', line.content]) },
     reportStatus: (state) => events.push(['status', state]),
     systemPrompt: 'sys',
+    annotationMode: 'overlay',
     ...overrides,
   });
   return { session, events };
@@ -100,4 +101,22 @@ test('board lines stay in order across steps even when speech is instant', async
   await session.ask('x');
   await new Promise((resolve) => setTimeout(resolve, 450 * 5 + 100));
   assert.deepEqual(lines, ['clear', '1', '2', '3', '4', '5']);
+});
+
+test('card mode pins a snapshot of the marked region on the board instead of drawing on screen, and prepares speech early', async () => {
+  const cropCalls = [];
+  const prepared = [];
+  const { session, events } = buildHarness(samplePlan, {
+    annotationMode: 'card',
+    cropScreenshot: (screenshot, cropRectangle) => { cropCalls.push({ base64: screenshot.base64, cropRectangle }); return 'data:image/jpeg;base64,CROP'; },
+    tts: { prepare: (text) => prepared.push(text), speak: async (text) => { events.push(['speak', text]); }, stop: () => {} },
+  });
+  await session.ask('explain this slide');
+  await new Promise((resolve) => setTimeout(resolve, 1200));
+  assert.ok(!events.some((event) => event[0] === 'shape'), 'nothing is drawn over the real screen');
+  assert.deepEqual(prepared, ['first', 'second']);
+  assert.equal(cropCalls.length, 2);
+  assert.equal(cropCalls[1].base64, 'BB', 'second mark is cropped from screen 2');
+  assert.ok(events.some((event) => event[0] === 'boardLine' && event[1] === 'data:image/jpeg;base64,CROP'));
+  assert.ok(events.some((event) => event[0] === 'boardShow'));
 });

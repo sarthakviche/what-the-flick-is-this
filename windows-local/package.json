@@ -16,6 +16,7 @@
     "@highlightjs/cdn-assets": "^11.10.0",
     "dotenv": "^16.4.5",
     "katex": "^0.16.11",
+    "kokoro-js": "^1.2.1",
     "mermaid": "^11.4.0"
   },
   "optionalDependencies": {

@@ -66,3 +66,11 @@ test('toGeminiSchema uppercases types and keeps structure', () => {
   assert.equal(converted.properties.steps.items.properties.mark.properties.box_2d.items.type, 'INTEGER');
   assert.deepEqual(converted.required, ['steps']);
 });
+
+test('math lines get LaTeX commands back when the model under-escaped them in JSON', () => {
+  const { normalizePlan } = require('../src/core/schema');
+  // The JSON text below has single backslashes, the way an under-escaping model would write it.
+  const plan = normalizePlan(JSON.parse('{"steps":[{"say":"s","board":[{"kind":"math","content":"\\frac{a}{b} \\times \\beta"},{"kind":"text","content":"a\\tb"}]}]}'));
+  assert.equal(plan.steps[0].board[0].content, '\\frac{a}{b} \\times \\beta');
+  assert.equal(plan.steps[0].board[1].content, 'a\tb', 'only math lines are repaired');
+});

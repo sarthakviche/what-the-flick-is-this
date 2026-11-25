@@ -45,9 +45,39 @@ async function renderDiagram(mermaidSource) {
   return container;
 }
 
-async function appendLine({ kind, content, lang }) {
+/** A zoomed piece of the user's screen, framed like a photo taped to the board. */
+function renderSnapshot(imageDataUrl, captionText) {
+  const figureElement = document.createElement('figure');
+  figureElement.className = 'snapshot';
+  const imageElement = document.createElement('img');
+  // Only data:image URLs made by the app itself are allowed in here.
+  if (String(imageDataUrl).startsWith('data:image/')) imageElement.src = imageDataUrl;
+  figureElement.appendChild(imageElement);
+  if (captionText) {
+    const captionElement = document.createElement('figcaption');
+    captionElement.textContent = captionText;
+    figureElement.appendChild(captionElement);
+  }
+  return figureElement;
+}
+
+/** "word: meaning" -> the word highlighted, then its meaning. */
+function renderTerm(termAndMeaning) {
+  const termElement = document.createElement('div');
+  const separatorIndex = termAndMeaning.indexOf(':');
+  const wordElement = document.createElement('span');
+  wordElement.className = 'term-word';
+  wordElement.textContent = separatorIndex > 0 ? termAndMeaning.slice(0, separatorIndex).trim() : termAndMeaning;
+  termElement.appendChild(wordElement);
+  if (separatorIndex > 0) termElement.appendChild(document.createTextNode(` ${termAndMeaning.slice(separatorIndex + 1).trim()}`));
+  return termElement;
+}
+
+async function appendLine({ kind, content, lang, caption }) {
   let lineElement;
-  if (kind === 'heading') { lineElement = document.createElement('div'); lineElement.className = 'heading'; lineElement.textContent = content; }
+  if (kind === 'snapshot') lineElement = renderSnapshot(content, caption);
+  else if (kind === 'term') lineElement = renderTerm(content);
+  else if (kind === 'heading') { lineElement = document.createElement('div'); lineElement.className = 'heading'; lineElement.textContent = content; }
   else if (kind === 'math') lineElement = renderMath(content);
   else if (kind === 'code') lineElement = renderCode(content, lang);
   else if (kind === 'diagram') lineElement = await renderDiagram(content);

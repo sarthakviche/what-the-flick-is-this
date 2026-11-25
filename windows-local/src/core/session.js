@@ -1,5 +1,5 @@
 'use strict';
-const { markToShape, shapeAnchor, pickDisplayForScreenNumber } = require('./coords');
+const { markToShape, shapeAnchor, pickDisplayForScreenNumber, markToCropRectangle } = require('./coords');
 
 const BOARD_LINE_REVEAL_DELAY_MILLISECONDS = 450;
 
@@ -15,9 +15,16 @@ const BOARD_LINE_REVEAL_DELAY_MILLISECONDS = 450;
  *   overlay.addShape(displayId, shape, anchor) / overlay.clearAll()
  *   board.clear() / board.show() / board.append(line)
  *   reportStatus(stateName, detail)
+ *   cropScreenshot(screenshot, cropRectangle) -> image data URL (only needed in 'card' mode)
+ *
+ * annotationMode:
+ *   'card'    (default) a step's mark becomes a zoomed snapshot of that part of the screen on the
+ *             whiteboard. Nothing is drawn over the real screen, so loose coordinates from free
+ *             models never look broken.
+ *   'overlay' marks are drawn on the transparent overlay over the real screen.
  */
 class CompanionSession {
-  constructor({ llm, tts, captureScreens, overlay, board, reportStatus, systemPrompt, maxHistoryTurns = 12 }) {
+  constructor({ llm, tts, captureScreens, overlay, board, reportStatus, systemPrompt, cropScreenshot = null, annotationMode = 'card', maxHistoryTurns = 12 }) {
     this.llm = llm;
     this.tts = tts;
     this.captureScreens = captureScreens;
@@ -25,6 +32,8 @@ class CompanionSession {
     this.board = board;
     this.reportStatus = reportStatus;
     this.systemPrompt = systemPrompt;
+    this.cropScreenshot = cropScreenshot;
+    this.annotationMode = annotationMode;
     this.maxHistoryTurns = maxHistoryTurns;
     this.conversationHistory = [];
     this.currentRunNumber = 0;
@@ -94,12 +103,16 @@ class CompanionSession {
       this.reportStatus('idle', 'The model returned nothing to say.');
       return;
     }
+    // Voices that can generate ahead (Kokoro) start on every step now, so later steps play without a gap.
+    for (const step of plan.steps) if (step.say) this.tts.prepare?.(step.say);
+    if (this.annotationMode === 'card') this.board.show();
     for (const step of plan.steps) {
       if (runNumber !== this.currentRunNumber) return;
       this.reportStatus('speaking', step.say);
 
-      if (step.mark) this.drawMark(step, screenshots);
       if (step.clearBoard) this.boardQueue.push({ isClear: true });
+      if (step.mark && this.annotationMode === 'card') this.queueSnapshot(step, screenshots);
+      else if (step.mark) this.drawMark(step, screenshots);
       if (step.board.length > 0) {
         this.board.show();
         for (const line of step.board) this.boardQueue.push({ line });
@@ -113,6 +126,21 @@ class CompanionSession {
           this.reportStatus('warning', `Speech failed: ${error.message}`);
         }
       }
+    }
+  }
+
+  /** Card mode: crop the part of the screenshot the step talks about and put it on the board. */
+  queueSnapshot(step, screenshots) {
+    if (!this.cropScreenshot) return;
+    const screenshot = pickDisplayForScreenNumber(step.screen, screenshots);
+    if (!screenshot) return;
+    const cropRectangle = markToCropRectangle(step.mark, screenshot.width, screenshot.height);
+    if (!cropRectangle) return;
+    try {
+      const imageDataUrl = this.cropScreenshot(screenshot, cropRectangle);
+      if (imageDataUrl) this.boardQueue.push({ line: { kind: 'snapshot', content: imageDataUrl, caption: step.mark.label || '' } });
+    } catch (error) {
+      this.reportStatus('warning', `Could not make the snapshot: ${error.message}`);
     }
   }
 

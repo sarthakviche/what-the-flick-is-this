@@ -17,8 +17,8 @@ Studying from lecture PDFs, code, circuit diagrams and past papers means constan
 
 1. **Push to talk.** Hold `Ctrl+Alt`, ask, release. (Fallbacks: `Ctrl+Alt+Space`, a mic button, or typing.)
 2. **Sees your screen.** Screenshots of every display go to a vision model.
-3. **Answers by voice** in a short, spoken style.
-4. **Annotates the screen.** Point, circle, box, arrow and underline marks with labels, drawn on a transparent click-through overlay and kept until dismissed (`Alt+Shift+X`).
+3. **Answers by voice** in a short, spoken style, with a natural local voice (Kokoro).
+4. **Builds an explainer card** on the whiteboard for every answer: a zoomed snapshot of the part of your slide it is talking about, key terms in plain words, and a small diagram. (The older mode that draws on the screen itself is still there as `ANNOTATION_MODE=overlay`, but free models place those marks loosely.)
 5. **Whiteboard mode.** For derivations, worked maths, code walkthroughs and diagrams, a docked window fills in line by line while each step is spoken. Maths is rendered with KaTeX, code with highlight.js, diagrams with Mermaid.
 
 Example questions: "which button runs the program?", "what does this line do?", "derive the quotient rule on the whiteboard", "explain how a B tree insert works with a diagram".
@@ -39,9 +39,9 @@ The model returns **structured JSON, not inline text tags**. Boxes use Gemini's 
 
 | Job | Default (free) | Alternatives |
 |---|---|---|
-| Vision + reasoning | Gemini free tier | Ollama with Qwen3-VL (fully local, experimental) |
-| Speech to text | Gemini audio (zero install) | Groq Whisper (free key, faster), faster-whisper (local) |
-| Text to speech | Windows built in voices (SAPI) | Piper (local neural voice), silent mode |
+| Vision + reasoning | Gemini Flash-Lite free tier (Flash as backup) | Ollama with Qwen3-VL (fully local, experimental) |
+| Speech to text | Groq Whisper if you add a free key, else Gemini audio | Groq Whisper (free key, faster), faster-whisper (local) |
+| Text to speech | Kokoro (natural, local, free) | Windows voices (SAPI), Piper, silent mode |
 
 Adding a provider is one file plus one line in `windows-local/src/providers/index.js`.
 

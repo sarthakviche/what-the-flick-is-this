@@ -89,4 +89,51 @@ function pickDisplayForScreenNumber(screenNumber, orderedDisplays) {
   return orderedDisplays[screenNumber - 1] || orderedDisplays[0] || null;
 }
 
-module.exports = { markToShape, shapeAnchor, pickDisplayForScreenNumber, toPixels };
+// Snapshot crops are padded generously and kept above a minimum size. Free vision models give loose
+// coordinates, so a roomy crop still shows the right thing, with context around it.
+const SNAPSHOT_PADDING_FRACTION = 0.12;
+const SNAPSHOT_MINIMUM_WIDTH_FRACTION = 0.35;
+const SNAPSHOT_MINIMUM_HEIGHT_FRACTION = 0.22;
+const POINT_SNAPSHOT_HALF_SIZE = 90; // in 0-1000 units around a point or arrow tip
+
+/** The 0-1000 region a mark refers to, as [ymin, xmin, ymax, xmax]. */
+function markRegion(mark) {
+  if (mark.box_2d) return mark.box_2d;
+  const centre = mark.point || mark.to;
+  if (!centre) return null;
+  const [centreY, centreX] = centre;
+  return [centreY - POINT_SNAPSHOT_HALF_SIZE, centreX - POINT_SNAPSHOT_HALF_SIZE, centreY + POINT_SNAPSHOT_HALF_SIZE, centreX + POINT_SNAPSHOT_HALF_SIZE];
+}
+
+/** Grows [start, end] (pixels) to at least minimumLength around its centre, then clamps it inside [0, limit]. */
+function widenSpan(start, end, minimumLength, limit) {
+  let spanStart = start;
+  let spanEnd = end;
+  if (spanEnd - spanStart < minimumLength) {
+    const centre = (spanStart + spanEnd) / 2;
+    spanStart = centre - minimumLength / 2;
+    spanEnd = centre + minimumLength / 2;
+  }
+  if (spanStart < 0) { spanEnd -= spanStart; spanStart = 0; }
+  if (spanEnd > limit) { spanStart -= spanEnd - limit; spanEnd = limit; }
+  return [Math.max(0, Math.round(spanStart)), Math.min(limit, Math.round(spanEnd))];
+}
+
+/**
+ * Turns a mark into a crop rectangle in screenshot image pixels, for the whiteboard snapshot.
+ * @returns {{x:number,y:number,width:number,height:number}|null}
+ */
+function markToCropRectangle(mark, imageWidth, imageHeight) {
+  if (!mark) return null;
+  const region = markRegion(mark);
+  if (!region) return null;
+  const [ymin, xmin, ymax, xmax] = region;
+  const paddingX = SNAPSHOT_PADDING_FRACTION * imageWidth;
+  const paddingY = SNAPSHOT_PADDING_FRACTION * imageHeight;
+  const [left, right] = widenSpan(toPixels(xmin, imageWidth) - paddingX, toPixels(xmax, imageWidth) + paddingX, imageWidth * SNAPSHOT_MINIMUM_WIDTH_FRACTION, imageWidth);
+  const [top, bottom] = widenSpan(toPixels(ymin, imageHeight) - paddingY, toPixels(ymax, imageHeight) + paddingY, imageHeight * SNAPSHOT_MINIMUM_HEIGHT_FRACTION, imageHeight);
+  if (right - left < 2 || bottom - top < 2) return null;
+  return { x: left, y: top, width: right - left, height: bottom - top };
+}
+
+module.exports = { markToShape, shapeAnchor, pickDisplayForScreenNumber, toPixels, markToCropRectangle };

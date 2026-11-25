@@ -1,6 +1,7 @@
 'use strict';
 const { app, BrowserWindow, Menu, Tray, globalShortcut, ipcMain, nativeImage, shell, session: electronSession } = require('electron');
 const path = require('node:path');
+const { fork } = require('node:child_process');
 
 const { loadConfiguration, parsePushToTalkKeys } = require('./config');
 const { ensureEnvFileExists, saveSettings, readSettingsForPanel } = require('./settingsStore');
@@ -9,14 +10,18 @@ const { captureAllScreens } = require('./capture');
 const { OverlayManager } = require('./overlayManager');
 const { BoardWindow } = require('./boardWindow');
 const { RecorderController } = require('./recorderController');
+const { AudioPlayer } = require('./audioPlayer');
+const { UsageCounter } = require('./usageCounter');
 const { startPushToTalk } = require('./hotkey');
 const { CompanionSession } = require('../core/session');
 const { SYSTEM_PROMPT } = require('../core/prompt');
 const { createLlmProvider, createSttProvider, createTtsProvider } = require('../providers');
 const { SilentTtsProvider } = require('../providers/tts/none');
+const { setGeminiRequestListener } = require('../providers/geminiRequest');
 
 const MINIMUM_RECORDING_BYTES = 16000 * 2 * 0.4; // ~0.4 s of 16 kHz 16 bit audio, shorter is a mis-press
 const APP_ICON_PATH = path.join(__dirname, '..', '..', 'assets', 'icon.png');
+const KOKORO_WORKER_PATH = path.join(__dirname, '..', 'providers', 'tts', 'kokoroWorker.mjs');
 // The keys page may only open these sites, so a compromised page can never launch arbitrary URLs.
 const ALLOWED_EXTERNAL_LINK_PREFIXES = [
   'https://aistudio.google.com/',
@@ -35,6 +40,10 @@ let speechToText = null;
 let overlayManager = null;
 let boardWindow = null;
 let recorderController = null;
+let audioPlayer = null;
+let usageCounter = null;
+let currentTtsProvider = null;
+let currentTtsSettingsKey = '';
 let pushToTalkHandle = null;
 let isMicToggledOn = false;
 let isQuitting = false;
@@ -78,13 +87,7 @@ function rebuildProviders() {
     providerSetupProblem = error.message;
     llmProvider = createMissingKeyLlm(error.message);
   }
-  let ttsProvider;
-  try {
-    ttsProvider = createTtsProvider(environment, log);
-  } catch (error) {
-    log(`Voice problem, staying silent: ${error.message}`);
-    ttsProvider = new SilentTtsProvider({ log });
-  }
+  const ttsProvider = rebuildVoiceIfSettingsChanged();
   speechToText?.dispose?.();
   try {
     speechToText = createSttProvider(environment);
@@ -100,11 +103,50 @@ function rebuildProviders() {
   return { llmProvider, ttsProvider };
 }
 
+/**
+ * Kokoro runs in a child process (forked with Electron's own Node) and plays through a hidden
+ * renderer. The voice is only rebuilt when voice settings change, because starting Kokoro
+ * reloads its model.
+ */
+function rebuildVoiceIfSettingsChanged() {
+  const ttsSettingsKey = [environment.TTS_PROVIDER, environment.KOKORO_VOICE, environment.SAPI_VOICE, environment.SAPI_RATE, environment.PIPER_MODEL].join('|');
+  if (currentTtsProvider && ttsSettingsKey === currentTtsSettingsKey) return currentTtsProvider;
+  currentTtsProvider?.stop?.();
+  currentTtsProvider?.dispose?.();
+  const kokoroCollaborators = {
+    startWorker: () => fork(KOKORO_WORKER_PATH, [], {
+      env: { ...process.env, KOKORO_VOICE: environment.KOKORO_VOICE || 'af_heart' },
+      stdio: ['ignore', 'inherit', 'inherit', 'ipc'],
+    }),
+    playWav: (wavBuffer) => audioPlayer.play(wavBuffer),
+    stopPlayback: () => audioPlayer.stop(),
+  };
+  try {
+    currentTtsProvider = createTtsProvider(environment, log, kokoroCollaborators);
+  } catch (error) {
+    log(`Voice problem, staying silent: ${error.message}`);
+    currentTtsProvider = new SilentTtsProvider({ log });
+  }
+  currentTtsSettingsKey = ttsSettingsKey;
+  return currentTtsProvider;
+}
+
+/** Cuts the region a step talks about out of the screenshot, for the whiteboard snapshot. */
+function cropScreenshotToDataUrl(screenshot, cropRectangle) {
+  const fullImage = nativeImage.createFromBuffer(Buffer.from(screenshot.base64, 'base64'));
+  const croppedImage = fullImage.crop(cropRectangle);
+  return `data:image/jpeg;base64,${croppedImage.toJPEG(88).toString('base64')}`;
+}
+
+function sendUsageToPanel() {
+  if (usageCounter) panelWindow?.webContents.send('panel:usage', usageCounter.summary());
+}
+
 function idleHint() {
   if (providerSetupProblem) return `Add your free key on the keys page first. ${providerSetupProblem}`;
   const pushToTalkKeys = parsePushToTalkKeys(environment.PUSH_TO_TALK_KEYS).join(' + ');
   return pushToTalkHandle?.available
-    ? `Open your slides, hold ${pushToTalkKeys} and ask away. Alt+Shift+X wipes the doodles.`
+    ? `Open your slides, hold ${pushToTalkKeys} and ask away. Answers show up on the whiteboard.`
     : 'Hotkey hook unavailable. Use Ctrl+Alt+Space, the mic button or type.';
 }
 
@@ -176,7 +218,7 @@ async function cancelListening() {
 
 function registerIpcHandlers() {
   ipcMain.on('panel:ask', (_event, questionText) => { companionSession.ask(questionText); });
-  ipcMain.on('panel:clear-marks', () => companionSession.clearMarks());
+  ipcMain.on('panel:clear-marks', () => { companionSession.clearMarks(); boardWindow.clear(); });
   ipcMain.on('panel:toggle-board', () => boardWindow.toggle());
   ipcMain.on('panel:cancel', () => { companionSession.cancelCurrentAnswer(); reportStatus('idle', ''); });
   ipcMain.on('panel:toggle-mic', () => toggleMic());
@@ -239,6 +281,9 @@ if (!app.requestSingleInstanceLock()) {
     overlayManager = new OverlayManager({ excludeFromCapture });
     boardWindow = new BoardWindow({});
     recorderController = new RecorderController();
+    audioPlayer = new AudioPlayer();
+    usageCounter = new UsageCounter({ storageFolder: app.getPath('userData'), onChange: sendUsageToPanel });
+    setGeminiRequestListener((modelName) => usageCounter.recordRequest(modelName));
 
     const { llmProvider, ttsProvider } = rebuildProviders();
 
@@ -257,6 +302,9 @@ if (!app.requestSingleInstanceLock()) {
       board: boardWindow,
       reportStatus,
       systemPrompt: SYSTEM_PROMPT,
+      cropScreenshot: cropScreenshotToDataUrl,
+      // 'card' (default) puts zoomed snapshots on the whiteboard; 'overlay' draws on the real screen.
+      annotationMode: (environment.ANNOTATION_MODE || 'card').toLowerCase() === 'overlay' ? 'overlay' : 'card',
     });
 
     overlayManager.start();
@@ -272,6 +320,7 @@ if (!app.requestSingleInstanceLock()) {
       // First run: no key yet, so open straight on the keys page with the tutorial.
       if (providerSetupProblem) showPanelPage('keys');
       reportStatus(providerSetupProblem ? 'setup' : 'idle', idleHint());
+      sendUsageToPanel();
     });
   });
 }
@@ -281,6 +330,7 @@ app.on('will-quit', () => {
   globalShortcut.unregisterAll();
   pushToTalkHandle?.stop();
   speechToText?.dispose?.();
+  currentTtsProvider?.dispose?.();
 });
 // Stay alive in the tray when all windows are hidden.
 app.on('window-all-closed', () => {});

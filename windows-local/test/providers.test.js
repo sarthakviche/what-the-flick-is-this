@@ -36,7 +36,7 @@ test('gemini builds the request with key header, schema, image and history roles
   assert.equal(body.contents.at(-1).parts[1].inlineData.data, 'QUJD');
 });
 
-test('gemini retries then falls back to the next model on 429', async () => {
+test('gemini moves to the next model on 429', async () => {
   const urls = [];
   const provider = new GeminiLlmProvider({
     apiKey: 'K', model: 'big', fallbackModels: ['small'], retryDelayMilliseconds: 1,
@@ -47,7 +47,7 @@ test('gemini retries then falls back to the next model on 429', async () => {
   });
   const plan = await provider.generatePlan(sampleRequest);
   assert.equal(plan.steps[0].say, 'ok');
-  assert.equal(urls.filter((url) => url.includes('big')).length, 2);
+  assert.equal(urls.filter((url) => url.includes('big')).length, 1);
 });
 
 test('gemini does not retry on 400 and requires a key', async () => {
