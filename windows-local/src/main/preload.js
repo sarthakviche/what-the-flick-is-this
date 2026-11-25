@@ -5,12 +5,15 @@ const { contextBridge, ipcRenderer } = require('electron');
 const CHANNELS_FROM_MAIN = new Set([
   'overlay:shape', 'overlay:clear', 'overlay:status',
   'board:append', 'board:clear',
-  'panel:status',
+  'panel:status', 'panel:show-page', 'panel:usage',
+  'player:play', 'player:stop',
   'recorder:start', 'recorder:stop',
 ]);
+// Request/response calls from the panel's keys page.
+const CHANNELS_TO_INVOKE = new Set(['settings:get', 'settings:save', 'settings:test-gemini', 'settings:test-groq', 'settings:open-link']);
 const CHANNELS_TO_MAIN = new Set([
   'panel:ask', 'panel:toggle-mic', 'panel:clear-marks', 'panel:toggle-board', 'panel:cancel',
-  'board:close', 'board:clear-request', 'recorder:result',
+  'board:close', 'board:clear-request', 'recorder:result', 'player:ended',
 ]);
 
 contextBridge.exposeInMainWorld('flick', {
@@ -21,5 +24,9 @@ contextBridge.exposeInMainWorld('flick', {
   send(channel, payload) {
     if (!CHANNELS_TO_MAIN.has(channel)) throw new Error(`blocked channel ${channel}`);
     ipcRenderer.send(channel, payload);
+  },
+  invoke(channel, payload) {
+    if (!CHANNELS_TO_INVOKE.has(channel)) throw new Error(`blocked channel ${channel}`);
+    return ipcRenderer.invoke(channel, payload);
   },
 });

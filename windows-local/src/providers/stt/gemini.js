@@ -1,19 +1,21 @@
 'use strict';
-const { postJson } = require('../http');
+const { postToGeminiWithFallback } = require('../geminiRequest');
 
 /** Speech to text by asking Gemini to transcribe the WAV. Zero install, uses the same free key. */
 class GeminiSttProvider {
-  constructor({ apiKey, model, fetchImplementation = fetch }) {
+  constructor({ apiKey, model, fallbackModels = [], fetchImplementation = fetch, retryDelayMilliseconds = 1000 }) {
     if (!apiKey) throw new Error('GEMINI_API_KEY is missing');
     this.apiKey = apiKey;
-    this.model = model;
+    this.modelsToTry = [model, ...fallbackModels].filter(Boolean);
+    this.retryDelayMilliseconds = retryDelayMilliseconds;
     this.fetchImplementation = fetchImplementation;
   }
 
   async transcribe(wavBuffer) {
-    const responseJson = await postJson({
-      url: `https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(this.model)}:generateContent`,
-      headers: { 'x-goog-api-key': this.apiKey },
+    return postToGeminiWithFallback({
+      apiKey: this.apiKey,
+      modelsToTry: this.modelsToTry,
+      retryDelayMilliseconds: this.retryDelayMilliseconds,
       body: {
         contents: [{
           role: 'user',
@@ -25,9 +27,11 @@ class GeminiSttProvider {
         generationConfig: { temperature: 0 },
       },
       fetchImplementation: this.fetchImplementation,
+      readResponse: (responseJson) => {
+        const parts = responseJson?.candidates?.[0]?.content?.parts || [];
+        return parts.map((part) => part.text || '').join('').trim();
+      },
     });
-    const parts = responseJson?.candidates?.[0]?.content?.parts || [];
-    return parts.map((part) => part.text || '').join('').trim();
   }
 }
 

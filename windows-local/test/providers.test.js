@@ -36,7 +36,7 @@ test('gemini builds the request with key header, schema, image and history roles
   assert.equal(body.contents.at(-1).parts[1].inlineData.data, 'QUJD');
 });
 
-test('gemini retries then falls back to the next model on 429', async () => {
+test('gemini moves to the next model on 429', async () => {
   const urls = [];
   const provider = new GeminiLlmProvider({
     apiKey: 'K', model: 'big', fallbackModels: ['small'], retryDelayMilliseconds: 1,
@@ -47,7 +47,7 @@ test('gemini retries then falls back to the next model on 429', async () => {
   });
   const plan = await provider.generatePlan(sampleRequest);
   assert.equal(plan.steps[0].say, 'ok');
-  assert.equal(urls.filter((url) => url.includes('big')).length, 2);
+  assert.equal(urls.filter((url) => url.includes('big')).length, 1);
 });
 
 test('gemini does not retry on 400 and requires a key', async () => {
@@ -109,4 +109,36 @@ test('provider factory picks by env and rejects unknown names', () => {
   assert.equal(createSttProvider({ STT_PROVIDER: 'none' }), null);
   assert.ok(createTtsProvider({ TTS_PROVIDER: 'none' }, () => {}) instanceof SilentTtsProvider);
   assert.throws(() => createLlmProvider({ LLM_PROVIDER: 'gemini' }), /GEMINI_API_KEY/);
+});
+
+test('gemini survives a 503 "high demand" by moving to the next model, and skips retired (404) models', async () => {
+  const urls = [];
+  const provider = new GeminiLlmProvider({
+    apiKey: 'K', model: 'busy', fallbackModels: ['retired', 'calm'], retryDelayMilliseconds: 1,
+    fetchImplementation: async (url) => {
+      urls.push(url);
+      if (url.includes('busy')) return fakeResponse(503, { error: { message: 'high demand' } });
+      if (url.includes('retired')) return fakeResponse(404, { error: 'not found' });
+      return geminiOk('{"steps":[{"say":"ok"}]}');
+    },
+  });
+  const plan = await provider.generatePlan(sampleRequest);
+  assert.equal(plan.steps[0].say, 'ok');
+  assert.equal(urls.filter((url) => url.includes('retired')).length, 1);
+});
+
+test('gemini explains in plain words when every model is overloaded', async () => {
+  const provider = new GeminiLlmProvider({
+    apiKey: 'K', model: 'a', fallbackModels: ['b'], retryDelayMilliseconds: 1,
+    fetchImplementation: async () => fakeResponse(503, { error: 'high demand' }),
+  });
+  await assert.rejects(() => provider.generatePlan(sampleRequest), /overloaded right now \(your key is fine\)/);
+});
+
+test('gemini voice input also falls back when the first model is busy', async () => {
+  const provider = new GeminiSttProvider({
+    apiKey: 'K', model: 'busy', fallbackModels: ['calm'], retryDelayMilliseconds: 1,
+    fetchImplementation: async (url) => (url.includes('busy') ? fakeResponse(503, {}) : geminiOk(' hello ')),
+  });
+  assert.equal(await provider.transcribe(Buffer.from('RIFF')), 'hello');
 });

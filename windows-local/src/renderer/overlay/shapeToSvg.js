@@ -3,7 +3,7 @@
   if (typeof module === 'object' && module.exports) module.exports = factory();
   else root.shapeToSvg = factory().shapeToSvg;
 }(typeof self !== 'undefined' ? self : this, function () {
-  const MARK_COLOR = '#3b82f6';
+  const MARK_COLOR = '#ff3d8b';
   const ARROW_HEAD_LENGTH = 22;
 
   function escapeXml(text) {
@@ -13,10 +13,10 @@
 
   function labelSvg(labelText, x, y) {
     if (!labelText) return '';
-    const textWidth = Math.max(40, labelText.length * 9 + 20);
+    const textWidth = Math.max(40, labelText.length * 10 + 24);
     return `<g class="mark-label" transform="translate(${round(x)} ${round(y)})">`
-      + `<rect x="0" y="-20" width="${textWidth}" height="28" rx="14" fill="${MARK_COLOR}"/>`
-      + `<text x="${textWidth / 2}" y="0" text-anchor="middle" fill="#fff" font-size="15" font-weight="600" font-family="Segoe UI, sans-serif">${escapeXml(labelText)}</text></g>`;
+      + `<rect x="0" y="-20" width="${textWidth}" height="30" rx="15" fill="${MARK_COLOR}"/>`
+      + `<text x="${textWidth / 2}" y="0" text-anchor="middle" fill="#fff" font-size="22" font-weight="700" font-family="Caveat, Segoe Print, cursive">${escapeXml(labelText)}</text></g>`;
   }
 
   /** pathLength=1 lets CSS animate stroke-dashoffset 1 -> 0 for a draw-in effect on any shape. */

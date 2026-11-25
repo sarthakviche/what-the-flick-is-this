@@ -48,7 +48,8 @@ function startPushToTalk({ modifierNames, onStart, onStop, onCancel, log }) {
     if (isRecording && !allRequiredHeld()) { isRecording = false; onStop(); }
   });
   uIOhook.start();
-  return { available: true, stop() { uIOhook.stop(); } };
+  // removeAllListeners so changing the keys in settings and restarting does not double the handlers.
+  return { available: true, stop() { uIOhook.stop(); uIOhook.removeAllListeners('keydown'); uIOhook.removeAllListeners('keyup'); } };
 }
 
 module.exports = { startPushToTalk };
