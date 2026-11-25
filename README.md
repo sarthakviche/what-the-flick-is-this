@@ -1,95 +1,261 @@
-# what the flick is this
+<div align="center">
 
-**A free, screen-aware AI study buddy for Windows, made for people learning from PPTs, PDFs and lecture notes.** Hold a key, ask out loud about whatever is on your screen, and it answers by voice, draws circles, boxes, arrows and underlines directly on your screen, and writes step-by-step derivations and code walkthroughs on a whiteboard while it talks.
+<img src="assets/banner.png" alt="what the flick is this? banner" width="100%">
 
-Built for exam preparation by a B.Tech IT student. It costs nothing to run: no Claude, no AssemblyAI, no ElevenLabs, no cloud proxy.
+# what the flick is this?
 
-![Marks drawn on the screen overlay](docs/screenshots/overlay-marks.png)
-![Whiteboard with math, code and a diagram](docs/screenshots/whiteboard.png)
+**A free, screen-aware AI study buddy for Windows.** Hold a key, ask about the slide, PDF or diagram on your screen, and it explains it out loud while building an explainer card on a whiteboard. Made for students learning from PPTs and lecture notes, with no paid APIs.
 
-*Screenshots are rendered by the real app code under a virtual display. The overlay is transparent on a real desktop; here it sits on a blank background.*
+<p>
+  <img src="https://img.shields.io/badge/license-MIT-22c55e?style=for-the-badge&labelColor=1e293b" alt="License: MIT">
+  <img src="https://img.shields.io/badge/Electron-33-47848F?style=for-the-badge&logo=electron&logoColor=47848F&labelColor=1e293b" alt="Electron 33">
+  <img src="https://img.shields.io/badge/Node.js-20%2B-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=5FA04E&labelColor=1e293b" alt="Node.js 20+">
+  <img src="https://img.shields.io/badge/tests-41%20passing-22c55e?style=for-the-badge&logo=checkmarx&logoColor=22c55e&labelColor=1e293b" alt="41 tests passing">
+  <img src="https://img.shields.io/badge/platform-Windows%2010%2F11-0078D4?style=for-the-badge&logo=windows&logoColor=0078D4&labelColor=1e293b" alt="Windows 10/11">
+  <img src="https://img.shields.io/badge/domain-EdTech-f472b6?style=for-the-badge&labelColor=1e293b" alt="EdTech">
+</p>
 
-## The problem
+[Quickstart](#installation--quickstart) · [How it works](#system-architecture) · [Report a Bug](https://github.com/sarthakviche/what-the-flick-is-this/issues)
 
-Studying from lecture PDFs, code, circuit diagrams and past papers means constantly switching to a chatbot, pasting text, and then hunting for "which line did it mean?". Most screen-aware assistants are Mac only or need paid API keys.
+<br>
 
-## What it does
+<img src="docs/screenshots/whiteboard.png" alt="Whiteboard explainer card: zoomed snapshot of the slide, key terms, formula and diagram" width="360">
+&nbsp;&nbsp;
+<img src="docs/screenshots/panel.png" alt="Control panel with quick prompts" width="300">
 
-1. **Push to talk.** Hold `Ctrl+Alt`, ask, release. (Fallbacks: `Ctrl+Alt+Space`, a mic button, or typing.)
-2. **Sees your screen.** Screenshots of every display go to a vision model.
-3. **Answers by voice** in a short, spoken style, with a natural local voice (Kokoro).
-4. **Builds an explainer card** on the whiteboard for every answer: a zoomed snapshot of the part of your slide it is talking about, key terms in plain words, and a small diagram. (The older mode that draws on the screen itself is still there as `ANNOTATION_MODE=overlay`, but free models place those marks loosely.)
-5. **Whiteboard mode.** For derivations, worked maths, code walkthroughs and diagrams, a docked window fills in line by line while each step is spoken. Maths is rendered with KaTeX, code with highlight.js, diagrams with Mermaid.
+<sub>Left: the explainer card for a sample slide about the artificial neuron. Right: the panel. Both rendered by the real app code.</sub>
 
-Example questions: "which button runs the program?", "what does this line do?", "derive the quotient rule on the whiteboard", "explain how a B tree insert works with a diagram".
+</div>
 
-## How it works
+---
+
+## About & Key Features
+
+You hold `Ctrl + Alt` and ask a question out loud. The app records your voice, turns it into text, takes a screenshot of every monitor, and sends both to Gemini's free vision model. Gemini replies with structured JSON steps: what to say, which part of the screen it means, and what to write on the whiteboard. The app then plays the steps one by one. It speaks each sentence with a local neural voice and fills in a whiteboard card: a zoomed snapshot of that part of your slide, key terms, LaTeX formulas and Mermaid diagrams.
+
+<table>
+  <tr>
+    <td width="33%" valign="top">
+      <h3>🗣️ Ask out loud</h3>
+      Hold <code>Ctrl + Alt</code>, speak, let go. Or type, or use one-click prompts: <i>explain this slide</i>, <i>explain like I'm 5</i>, <i>key terms</i>, <i>quiz me</i>, <i>exam angle</i>.
+    </td>
+    <td width="33%" valign="top">
+      <h3>🧾 Explainer cards</h3>
+      Each answer pins a padded snapshot of the region it's talking about, plus key terms, formulas (KaTeX) and diagrams (Mermaid) on a chalkboard-style whiteboard.
+    </td>
+    <td width="33%" valign="top">
+      <h3>💸 Free to run</h3>
+      Gemini Flash-Lite free tier for the brain, optional free Groq Whisper for voice input, Kokoro running locally for the voice. No credit card and no server.
+    </td>
+  </tr>
+</table>
+
+- **Built for the free tier.** Flash-Lite answers by default because its free daily quota is far bigger than Flash's. Each question makes at most 3 attempts when Google is busy (HTTP 503/429), switching models between them. Retired model ids (HTTP 404) are skipped. A counter in the panel shows Gemini calls per Pacific-time day, which is when Google resets free quotas.
+- **Explains your screen without marking it.** Free vision models give loose coordinates, so instead of drawing boxes over your real screen, answers crop a generous region into the whiteboard. Close is good enough. The older on-screen mode is still available as `ANNOTATION_MODE=overlay`.
+- **Natural voice, offline.** Kokoro (82M parameters, Apache 2.0) runs in a separate background process and starts playing one sentence while it generates the next. It uses the Windows voice until its model has downloaded, or if it fails.
+- **Structured JSON output.** The model answers in a fixed JSON format with `box_2d` regions on a 0–1000 scale for each screen, so multiple monitors and Windows display scaling need no special handling.
+- **Keys in the app.** A keys page with step-by-step instructions, "test it" buttons and a settings section. Keys stay in a git-ignored local `.env`.
+- **One click.** `start-what-the-flick.cmd` installs everything on first run and creates a Desktop and Start menu shortcut.
+
+---
+
+## System Architecture
 
 ```
-hold Ctrl+Alt -> mic recorder -> speech to text -> transcript
-                 screenshots of all displays
-transcript + screenshots + history -> vision LLM (JSON schema output)
-    -> { steps: [ { say, mark?, board?[] } ] }
-for each step: draw mark on overlay, write board lines, speak the sentence
+  INPUT                         PROCESSING                                  OUTPUT
+  ─────                         ──────────                                  ──────
+  hold Ctrl+Alt ──► mic recorder (hidden renderer, 16 kHz WAV)
+                        │
+                        ▼
+                    speech to text ── auto: Groq Whisper (if key) │ Gemini audio
+                        │
+                        ▼  transcript
+  all monitors ──► screen capture (JPEG ≤1600px, labeled screen1..N)
+                        │
+                        ▼
+                    Gemini Flash-Lite ── JSON schema ──► { steps: [ {say, mark?, board[]} ] }
+                    (fallback Flash, ≤3 tries, 404s skipped)
+                        │
+                        ▼
+                    CompanionSession (src/core/session.js), for each step in order:
+                        ├── mark  ──► crop screenshot (padded) ─────────►  whiteboard: snapshot card
+                        ├── board ──► heading │ term │ math │ code │ diagram ►  whiteboard (KaTeX, Mermaid, hljs)
+                        └── say   ──► Kokoro worker (child process) ──────►  hidden audio player ► speakers
+                                      └─ prepares next sentences ahead     (falls back to Windows SAPI)
 ```
 
-The model returns **structured JSON, not inline text tags**. Boxes use Gemini's `box_2d` format `[ymin, xmin, ymax, xmax]` normalized 0 to 1000 per screen, so multi monitor and Windows display scaling need no special handling.
-
-### Swappable providers
-
-| Job | Default (free) | Alternatives |
+| Layer | Location | Notes |
 |---|---|---|
-| Vision + reasoning | Gemini Flash-Lite free tier (Flash as backup) | Ollama with Qwen3-VL (fully local, experimental) |
-| Speech to text | Groq Whisper if you add a free key, else Gemini audio | Groq Whisper (free key, faster), faster-whisper (local) |
-| Text to speech | Kokoro (natural, local, free) | Windows voices (SAPI), Piper, silent mode |
+| Core logic (no Electron) | `windows-local/src/core/` | Response format and cleanup, coordinate and crop math, system prompt, session orchestrator |
+| Providers | `windows-local/src/providers/` | `llm/` Gemini, Ollama · `stt/` Gemini, Groq, faster-whisper · `tts/` Kokoro, SAPI, Piper, silent |
+| Electron shell | `windows-local/src/main/` | Panel, tray, whiteboard, overlay, recorder, audio player, push-to-talk hook, settings, usage counter |
+| Pages | `windows-local/src/renderer/` | Panel, whiteboard, overlay, recorder and player pages (handwritten notebook style) |
 
-Adding a provider is one file plus one line in `windows-local/src/providers/index.js`.
+---
 
-### Key design decisions (full reasoning in `docs/PLAN.md`)
+## Tech Stack
 
-- **New Electron client instead of porting the Swift app.** The original Clicky is macOS only (ScreenCaptureKit, NSPanel, CGEvent). The Windows community port Clacky is Python with paid APIs. Electron gives transparent click-through overlays, multi display capture and a web view for the whiteboard in one codebase.
-- **Normalized 0-1000 coordinates** instead of pixel coordinates.
-- **KaTeX + highlight.js + Mermaid for the whiteboard** instead of tldraw or Excalidraw, because exam content is mostly text based derivations, code and flow diagrams.
-- **Ordered board queue** so lines from a short step can never overtake the previous step's lines (a real bug found in testing, now covered by a test).
-- **Wait for the full JSON before playback.** Simple and robust. Streaming partial JSON would cut about a second or two of latency and is a follow-up.
+<p>
+  <img src="https://img.shields.io/badge/Electron-47848F?style=for-the-badge&logo=electron&logoColor=47848F&labelColor=1e293b&color=1e293b" alt="Electron">
+  <img src="https://img.shields.io/badge/Node.js-5FA04E?style=for-the-badge&logo=nodedotjs&logoColor=5FA04E&labelColor=1e293b&color=1e293b" alt="Node.js">
+  <img src="https://img.shields.io/badge/JavaScript-F7DF1E?style=for-the-badge&logo=javascript&logoColor=F7DF1E&labelColor=1e293b&color=1e293b" alt="JavaScript">
+  <img src="https://img.shields.io/badge/Google%20Gemini-8E75B2?style=for-the-badge&logo=googlegemini&logoColor=8E75B2&labelColor=1e293b&color=1e293b" alt="Google Gemini">
+  <img src="https://img.shields.io/badge/Groq%20Whisper-F55036?style=for-the-badge&logo=groq&logoColor=F55036&labelColor=1e293b&color=1e293b" alt="Groq Whisper">
+  <img src="https://img.shields.io/badge/Kokoro%20TTS-FFD21E?style=for-the-badge&logo=huggingface&logoColor=FFD21E&labelColor=1e293b&color=1e293b" alt="Kokoro TTS">
+  <img src="https://img.shields.io/badge/KaTeX-329894?style=for-the-badge&logo=katex&logoColor=329894&labelColor=1e293b&color=1e293b" alt="KaTeX">
+  <img src="https://img.shields.io/badge/Mermaid-FF3670?style=for-the-badge&logo=mermaid&logoColor=FF3670&labelColor=1e293b&color=1e293b" alt="Mermaid">
+  <img src="https://img.shields.io/badge/highlight.js-38BDF8?style=for-the-badge&logo=javascript&logoColor=38BDF8&labelColor=1e293b&color=1e293b" alt="highlight.js">
+  <img src="https://img.shields.io/badge/dotenv-ECD53F?style=for-the-badge&logo=dotenv&logoColor=ECD53F&labelColor=1e293b&color=1e293b" alt="dotenv">
+  <img src="https://img.shields.io/badge/Fontsource-F472B6?style=for-the-badge&logo=googlefonts&logoColor=F472B6&labelColor=1e293b&color=1e293b" alt="Fontsource">
+</p>
 
-## Run it on Windows (one click)
+From `windows-local/package.json`: `electron`, `kokoro-js`, `katex`, `mermaid`, `@highlightjs/cdn-assets`, `dotenv`, `@fontsource/caveat`, `@fontsource/patrick-hand`, and optionally `uiohook-napi` for the global push-to-talk hook. Gemini and Groq are called over plain REST with `fetch`; no SDKs.
 
-1. Install [Node.js LTS](https://nodejs.org) once.
-2. Double click **`start-what-the-flick.cmd`** in this folder. The first run installs everything (a minute or two) and puts a **what the flick is this** shortcut with the app icon on your Desktop and in the Start menu. After that, use the shortcut.
-3. The app opens on the **keys** page with a 1 minute tutorial. Paste a free Gemini key from https://aistudio.google.com/apikey, hit **test it**, then **save**. (Optional: a free Groq key from https://console.groq.com/keys for faster voice input.)
-4. Open your slides, hold `Ctrl+Alt`, ask "explain this slide", let go.
+---
 
-Manual route and all options: [`windows-local/README.md`](windows-local/README.md).
+## Installation & Quickstart
 
-## Testing and honest limits
+**Prerequisites**
 
-- **Passing:** 28 unit tests (`cd windows-local && npm test`) covering response schema, coordinate maths, session orchestration, provider requests with mocked HTTP, overlay SVG output and the WAV encoder.
-- **Also run:** the real overlay, whiteboard, screen capture and app boot under a Linux virtual display, with a fake model.
-- **Not run (no Windows machine, no route to Google, no audio devices in the build environment):** a live Gemini call, transparent click-through behavior on Windows, the `uiohook-napi` push-to-talk hook, microphone capture, SAPI and Piper playback, faster-whisper, Ollama, and how precisely Gemini places boxes on real screens.
-- The default model id in `.env.example` came from a docs lookup and should be confirmed in Google AI Studio. `npm run doctor` reports if it is stale.
-- Free tier Gemini is rate limited. The app retries and falls back to other models listed in `GEMINI_FALLBACK_MODELS`.
+| Requirement | Version / where to get it |
+|---|---|
+| Windows | 10 (2004+) or 11, x64 |
+| Node.js | 20 or newer, [nodejs.org](https://nodejs.org) (LTS) |
+| Gemini API key | Free, [aistudio.google.com/apikey](https://aistudio.google.com/apikey), no card needed |
+| Groq API key *(optional)* | Free, [console.groq.com/keys](https://console.groq.com/keys): faster voice input, saves Gemini quota |
+| Microphone and speakers | For voice. Typing works without them. |
 
-## Privacy
+**Option A: one click**
 
-Each question sends screenshots of all displays to the model provider. On Gemini's free tier, Google's terms say content may be used to improve their products, so close private windows first or use the local Ollama path. API keys live only in a git-ignored `.env`.
+1. Clone or download this repo.
+2. Double-click **`start-what-the-flick.cmd`**. The first run installs dependencies (about 2 minutes) and creates a **what the flick is this** shortcut on your Desktop and in the Start menu.
+3. The app opens on the **keys** page. Paste your Gemini key, click **test it**, then **save**.
 
-## Project layout
+**Option B: terminal**
 
+```powershell
+git clone https://github.com/sarthakviche/what-the-flick-is-this.git
+cd what-the-flick-is-this\windows-local
+npm install
+copy .env.example .env
+notepad .env                      # set GEMINI_API_KEY= (or skip and use the in-app keys page)
+npm run doctor                    # checks your config and key
+npm start
 ```
-windows-local/        the Windows app (this project)
-  src/core/             schema, coordinate math, prompt, session orchestrator (no Electron imports)
-  src/providers/        llm/ stt/ tts/ implementations
-  src/main/             Electron main process: overlay, whiteboard, tray, hotkey, recorder
-  src/renderer/         overlay, whiteboard, panel and recorder pages
-  sidecar/              optional faster-whisper helper
-  test/                 unit tests and a manual Electron smoke test
-docs/PLAN.md          plan, Windows decision and architecture
-leanring-buddy/       original macOS Swift app (reference, untouched)
-worker/               original Cloudflare Worker proxy (reference, not used)
-README_ORIGINAL_CLICKY.md   the upstream README
+
+**Key settings** (`windows-local/.env`, all editable from the keys page):
+
+| Variable | Default | Options |
+|---|---|---|
+| `GEMINI_API_KEY` | (empty) | your key |
+| `GROQ_API_KEY` | (empty) | optional |
+| `GEMINI_MODEL` | `gemini-flash-lite-latest` | any Gemini model id your key can use |
+| `STT_PROVIDER` | `auto` | `auto`, `gemini`, `groq`, `faster-whisper`, `none` |
+| `TTS_PROVIDER` | `kokoro` | `kokoro`, `sapi`, `piper`, `none` |
+| `KOKORO_VOICE` | `af_heart` | `af_bella`, `af_nicole`, `am_michael`, `am_fenrir`, `bf_emma`, `bm_george` |
+| `ANNOTATION_MODE` | `card` | `card`, `overlay` |
+| `PUSH_TO_TALK_KEYS` | `ctrl+alt` | `ctrl+shift`, `alt+shift` |
+| `LLM_PROVIDER` | `gemini` | `gemini`, `ollama` (fully local, experimental) |
+
+> **Privacy:** every question sends a screenshot of **all your monitors** to Google. On the free tier Google may use that content to improve its products, so close private windows before asking, or use `LLM_PROVIDER=ollama`.
+
+---
+
+## Usage Examples
+
+**Ask about your screen.** Open a lecture PDF or PPT, hold `Ctrl + Alt`, then say:
+
+```text
+"explain this slide step by step"
+"what's the difference between sigmoid and relu here?"
+"derive this formula on the whiteboard"
+"quiz me on this slide"
 ```
 
-## Credits and license
+**Shortcuts**
 
-Based on the idea and system prompt style of [Clicky](https://github.com/farzaa/clicky) by Farza (MIT license, see `LICENSE`). The Swift macOS code and Cloudflare Worker in this folder are the unmodified originals, included for reference. All code under `windows-local/` and `docs/PLAN.md` is new work for this project. Raynan00/clacky was read as a reference for Windows approaches, and no code was copied from it. If your hackathon has rules about prior work, disclose that this builds on Clicky's open source idea.
+| Keys | Action |
+|---|---|
+| hold `Ctrl + Alt` | push to talk (release to send) |
+| `Ctrl + Alt + Space` | mic on / off toggle |
+| `Alt + Shift + X` | clear on-screen marks (overlay mode) |
+
+**Check your setup** (`npm run doctor`, real output):
+
+```powershell
+PS> cd windows-local
+PS> npm run doctor
+OK   LLM_PROVIDER=gemini STT_PROVIDER=auto TTS_PROVIDER=kokoro
+OK   Gemini key works (model gemini-flash-lite-latest).
+```
+
+**Run the tests** (no Electron, network or keys needed):
+
+```powershell
+PS> npm test
+# tests 41
+# pass 41
+# fail 0
+```
+
+**The format the model answers in** (what Gemini returns for each question, defined in `src/core/schema.js`):
+
+```json
+{
+  "mode": "whiteboard",
+  "steps": [
+    {
+      "say": "so this slide is about the artificial neuron.",
+      "clear_board": true,
+      "mark": { "type": "box", "box_2d": [330, 290, 750, 780], "label": "the neuron diagram" },
+      "board": [
+        { "kind": "heading", "content": "the artificial neuron" },
+        { "kind": "term", "content": "bias: a constant nudge added before activation" },
+        { "kind": "math", "content": "z = \\sum_i w_i x_i + b" },
+        { "kind": "diagram", "content": "flowchart LR; A[inputs] --> B[weighted sum] --> C[activation]" }
+      ]
+    }
+  ]
+}
+```
+
+**Add a provider.** Write one file that implements `generatePlan`, `transcribe` or `speak`, then add one line to `windows-local/src/providers/index.js`.
+
+---
+
+## Roadmap
+
+- [x] Push-to-talk voice questions, plus typing and one-click study prompts
+- [x] Multi-monitor screen capture → Gemini structured JSON answers
+- [x] Whiteboard explainer cards: snapshot, key terms, KaTeX, Mermaid, code highlighting
+- [x] Free-tier handling: Flash-Lite default, capped retries, model fallback, daily usage counter
+- [x] Kokoro local neural voice with Windows voice fallback
+- [x] In-app keys page with tutorials and key testing
+- [x] One-click launcher and Desktop shortcut
+- [ ] Exact word positions from local Windows OCR, so marks land precisely without paid models
+- [ ] Start speaking before the whole answer arrives (streaming JSON) to cut waiting time
+- [ ] Packaged installer (`.exe`) so Node.js isn't required
+- [ ] Save explainer cards as revision notes (PDF / Markdown export)
+- [ ] macOS and Linux builds
+
+---
+
+## Contributing & License
+
+Issues and pull requests are welcome.
+
+1. [Open an issue](https://github.com/sarthakviche/what-the-flick-is-this/issues) describing the bug or idea.
+2. Fork, create a branch (`feature/short-description` or `fix/short-description`), and keep `cd windows-local && npm test` passing.
+3. Open a PR against `main` explaining *why* the change is needed.
+
+Licensed under the [MIT License](LICENSE).
+
+This project builds on the idea and system-prompt style of [Clicky](https://github.com/farzaa/clicky) by Farza (MIT). The original macOS Swift app (`leanring-buddy/`) and Cloudflare Worker (`worker/`) are included unmodified for reference; the upstream README is in [`README_ORIGINAL_CLICKY.md`](README_ORIGINAL_CLICKY.md). Everything under `windows-local/` is new work.
+
+---
+
+<div align="center">
+
+**Built by Sarthak Viche**
+
+</div>
