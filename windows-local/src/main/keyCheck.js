@@ -1,6 +1,7 @@
 'use strict';
 const { RESPONSE_JSON_SCHEMA, toGeminiSchema } = require('../core/schema');
-const { DEFAULT_GEMINI_MODEL } = require('../providers');
+const { buildModelsToTry, postToGeminiWithFallback } = require('../providers/geminiRequest');
+const { HttpError } = require('../providers/http');
 
 /** Turns a Gemini/Groq error status into a sentence a non-developer can act on. */
 function explainHttpStatus(serviceName, status, bodyText) {
@@ -11,25 +12,29 @@ function explainHttpStatus(serviceName, status, bodyText) {
   return `${serviceName} returned HTTP ${status}: ${bodyText.slice(0, 160)}`;
 }
 
-/** One tiny structured-output call, the same shape the real app uses. */
+/**
+ * One tiny structured-output call, the same shape the real app uses, with the same model fallbacks.
+ * 503 "high demand" and 429 mean Google accepted the key and is only busy, so they count as a working key.
+ */
 async function checkGeminiKey({ apiKey, modelName }) {
   if (!apiKey) return { isOk: false, message: 'No Gemini key yet. Follow the steps below to get a free one.' };
-  const modelToCheck = modelName || DEFAULT_GEMINI_MODEL;
   try {
-    const response = await fetch(`https://generativelanguage.googleapis.com/v1beta/models/${encodeURIComponent(modelToCheck)}:generateContent`, {
-      method: 'POST',
-      headers: { 'content-type': 'application/json', 'x-goog-api-key': apiKey },
-      body: JSON.stringify({
+    const answeringModel = await postToGeminiWithFallback({
+      apiKey,
+      modelsToTry: buildModelsToTry(modelName),
+      body: {
         contents: [{ role: 'user', parts: [{ text: 'Say hi in one step.' }] }],
         generationConfig: { responseMimeType: 'application/json', responseSchema: toGeminiSchema(RESPONSE_JSON_SCHEMA) },
-      }),
-      signal: AbortSignal.timeout(30000),
+      },
+      readResponse: (_responseJson, respondingModelName) => respondingModelName,
+      retryDelayMilliseconds: 800,
+      timeoutMilliseconds: 30000,
     });
-    const bodyText = await response.text();
-    if (response.ok) return { isOk: true, message: `Gemini key works (model ${modelToCheck}).` };
-    return { isOk: response.status === 429, message: explainHttpStatus('Gemini', response.status, bodyText) };
+    return { isOk: true, message: `Gemini key works (model ${answeringModel}).` };
   } catch (error) {
-    return { isOk: false, message: `Could not reach Gemini: ${error.message}. Check your internet.` };
+    if (error instanceof HttpError) return { isOk: false, message: explainHttpStatus('Gemini', error.status, error.message) };
+    if (/overloaded|free tier limit/.test(error.message)) return { isOk: true, message: `your key is accepted, but ${error.message.charAt(0).toLowerCase()}${error.message.slice(1)}` };
+    return { isOk: false, message: `Could not reach Gemini: ${error.message}` };
   }
 }
 

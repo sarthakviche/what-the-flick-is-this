@@ -8,9 +8,7 @@ const { SapiTtsProvider } = require('./tts/sapi');
 const { PiperTtsProvider } = require('./tts/piper');
 const { SilentTtsProvider } = require('./tts/none');
 
-// Google's "latest" aliases always point at a current Flash model, so the default never goes stale.
-const DEFAULT_GEMINI_MODEL = 'gemini-flash-latest';
-const DEFAULT_GEMINI_FALLBACK_MODELS = 'gemini-flash-lite-latest';
+const { DEFAULT_GEMINI_MODEL, parseModelList, buildModelsToTry } = require('./geminiRequest');
 
 /** Provider factories. To add a provider: write one file implementing the interface and add one line here. */
 function createLlmProvider(env) {
@@ -19,7 +17,7 @@ function createLlmProvider(env) {
     return new GeminiLlmProvider({
       apiKey: env.GEMINI_API_KEY,
       model: env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL,
-      fallbackModels: (env.GEMINI_FALLBACK_MODELS ?? DEFAULT_GEMINI_FALLBACK_MODELS).split(',').map((name) => name.trim()).filter(Boolean),
+      fallbackModels: buildModelsToTry(env.GEMINI_MODEL, parseModelList(env.GEMINI_FALLBACK_MODELS)).slice(1),
     });
   }
   if (providerName === 'ollama') {
@@ -36,7 +34,12 @@ function createSttProvider(env) {
   const providerName = (env.STT_PROVIDER || 'gemini').toLowerCase();
   if (providerName === 'none') return null;
   if (providerName === 'gemini') {
-    return new GeminiSttProvider({ apiKey: env.GEMINI_API_KEY, model: env.GEMINI_STT_MODEL || env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL });
+    const sttModel = env.GEMINI_STT_MODEL || env.GEMINI_MODEL || DEFAULT_GEMINI_MODEL;
+    return new GeminiSttProvider({
+      apiKey: env.GEMINI_API_KEY,
+      model: sttModel,
+      fallbackModels: buildModelsToTry(sttModel, parseModelList(env.GEMINI_FALLBACK_MODELS)).slice(1),
+    });
   }
   if (providerName === 'groq') return new GroqSttProvider({ apiKey: env.GROQ_API_KEY });
   if (providerName === 'faster-whisper') {
