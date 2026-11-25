@@ -1,0 +1,31 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<style>
+  html, body { margin: 0; height: 100%; overflow: hidden; background: transparent; }
+  svg#marks { position: fixed; inset: 0; width: 100%; height: 100%; }
+  .draw { stroke-dasharray: 1; stroke-dashoffset: 1; animation: draw 0.7s ease-out forwards; filter: drop-shadow(0 0 6px rgba(59,130,246,.8)); }
+  @keyframes draw { to { stroke-dashoffset: 0; } }
+  .mark-label { opacity: 0; animation: fade 0.3s 0.5s forwards; }
+  @keyframes fade { to { opacity: 1; } }
+  #buddy { position: fixed; left: 0; top: 0; width: 0; height: 0; display: none; pointer-events: none;
+    border-left: 9px solid transparent; border-right: 9px solid transparent; border-bottom: 22px solid #3b82f6;
+    filter: drop-shadow(0 0 8px rgba(59,130,246,.9)); transform-origin: 50% 70%; }
+  #status { position: fixed; left: 50%; bottom: 36px; transform: translateX(-50%); max-width: 70%;
+    background: rgba(18,21,28,.92); color: #e8ecf4; font: 600 15px 'Segoe UI', sans-serif; padding: 10px 18px; border-radius: 22px;
+    opacity: 0; transition: opacity .25s; white-space: nowrap; overflow: hidden; text-overflow: ellipsis; }
+  #status.visible { opacity: 1; }
+  #status .dot { display: inline-block; width: 9px; height: 9px; border-radius: 50%; background: #3b82f6; margin-right: 10px; animation: pulse 1s infinite; }
+  @keyframes pulse { 50% { opacity: .3; } }
+</style>
+</head>
+<body>
+<svg id="marks" xmlns="http://www.w3.org/2000/svg"></svg>
+<div id="buddy"></div>
+<div id="status"></div>
+<script src="shapeToSvg.js"></script>
+<script src="overlay.js"></script>
+</body>
+</html>

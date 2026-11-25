@@ -1,0 +1,37 @@
+<!doctype html>
+<html>
+<head>
+<meta charset="utf-8">
+<meta http-equiv="Content-Security-Policy" content="default-src 'none'; style-src 'unsafe-inline'; script-src 'self'">
+<style>
+  body { margin: 0; background: #12151c; color: #e8ecf4; font: 14px 'Segoe UI', sans-serif; padding: 16px; box-sizing: border-box; height: 100vh; display: flex; flex-direction: column; gap: 12px; }
+  h1 { font-size: 17px; margin: 0; }
+  h1 span { color: #3b82f6; }
+  #status { background: #1a1f2b; border-radius: 10px; padding: 12px; min-height: 64px; line-height: 1.45; }
+  #state { font-weight: 700; color: #7db1ff; text-transform: uppercase; font-size: 11px; letter-spacing: .08em; }
+  #state.error { color: #ff8b8b; }
+  textarea { background: #1a1f2b; color: inherit; border: 1px solid #2a3142; border-radius: 10px; padding: 10px; font: inherit; resize: none; height: 78px; }
+  textarea:focus { outline: 2px solid #3b82f6; }
+  .row { display: flex; gap: 8px; flex-wrap: wrap; }
+  button { background: #2a3142; color: inherit; border: 0; border-radius: 8px; padding: 9px 13px; font: inherit; cursor: pointer; }
+  button:hover { background: #3b82f6; }
+  button.primary { background: #3b82f6; }
+  button.primary:hover { background: #5b9bff; }
+  small { color: #8a93a6; }
+</style>
+</head>
+<body>
+<h1>what the <span>flick</span> is this</h1>
+<div id="status"><div id="state">idle</div><div id="detail">starting...</div></div>
+<textarea id="question" placeholder="Type a question about your screen, then Ctrl+Enter"></textarea>
+<div class="row">
+  <button class="primary" id="ask">Ask</button>
+  <button id="mic">Mic on/off</button>
+  <button id="stop">Stop</button>
+  <button id="clearMarks">Clear marks</button>
+  <button id="board">Whiteboard</button>
+</div>
+<small>Close this window to keep running in the tray.</small>
+<script src="panel.js"></script>
+</body>
+</html>

@@ -1,0 +1,25 @@
+{
+  "name": "what-the-flick-is-this",
+  "version": "0.1.0",
+  "description": "Local, free, screen-aware AI study buddy for Windows. Fork of the Clicky idea.",
+  "main": "src/main/main.js",
+  "license": "MIT",
+  "private": true,
+  "scripts": {
+    "start": "electron .",
+    "test": "node --test \"test/*.test.js\"",
+    "doctor": "node src/main/doctor.js"
+  },
+  "dependencies": {
+    "dotenv": "^16.4.5",
+    "@highlightjs/cdn-assets": "^11.10.0",
+    "katex": "^0.16.11",
+    "mermaid": "^11.4.0"
+  },
+  "optionalDependencies": {
+    "uiohook-napi": "^1.5.4"
+  },
+  "devDependencies": {
+    "electron": "^33.2.0"
+  }
+}
